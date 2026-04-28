@@ -15,23 +15,39 @@ export default function LoginPage() {
   const supabase = createClient()
 
   async function handleSubmit() {
+    if (!email.trim() || !password.trim()) {
+      setError('Email and password are required')
+      return
+    }
     setLoading(true)
     setError(null)
 
-    if (mode === 'signup') {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { name: name || email.split('@')[0] } },
-      })
-      if (error) { setError(error.message); setLoading(false); return }
-      router.push('/dashboard')
-      router.refresh()
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) { setError(error.message); setLoading(false); return }
-      router.push('/dashboard')
-      router.refresh()
+    try {
+      if (mode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { name: name || email.split('@')[0] } },
+        })
+        if (error) { setError(error.message); setLoading(false); return }
+        // With autoconfirm enabled, session is available immediately
+        if (data.session) {
+          router.push('/dashboard')
+          router.refresh()
+        } else {
+          // Fallback: email confirmation required
+          setError('Check your email to confirm your account, then sign in.')
+          setLoading(false)
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) { setError(error.message); setLoading(false); return }
+        router.push('/dashboard')
+        router.refresh()
+      }
+    } catch (e) {
+      setError('Something went wrong. Please try again.')
+      setLoading(false)
     }
   }
 

@@ -155,10 +155,9 @@ export default function ContactsClient({ initialContacts }: Props) {
                 </td></tr>
               ) : filtered.map(c => (
                 <tr key={c.id}
-                  style={{ borderBottom: '1px solid var(--hairline)', cursor: 'pointer', transition: 'background 0.1s' }}
+                  className="table-row-interactive"
+                  style={{ borderBottom: '1px solid var(--hairline)' }}
                   onClick={() => router.push(`/contacts/${c.id}`)}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   <td style={{ padding: '12px 16px' }} onClick={e => e.stopPropagation()}>
                     <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSelect(c.id)}

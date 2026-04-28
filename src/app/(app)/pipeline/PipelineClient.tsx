@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import {
   DndContext, DragOverlay, closestCorners,
   type DragStartEvent, type DragEndEvent,
-  PointerSensor, useSensor, useSensors,
+  PointerSensor, MouseSensor, TouchSensor, useSensor, useSensors,
 } from '@dnd-kit/core'
 import {
   SortableContext, verticalListSortingStrategy,
@@ -26,7 +26,11 @@ export default function PipelineClient({ initialDeals }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const supabase = createClient()
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  )
 
   useEffect(() => {
     const ch = supabase.channel('pipeline')
@@ -200,6 +204,8 @@ function DealCard({ deal }: { deal: Deal }) {
         borderRadius: 8, padding: '12px',
         cursor: 'grab',
         userSelect: 'none',
+        touchAction: 'none',
+        WebkitUserSelect: 'none',
       }}
     >
       <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, lineHeight: 1.4 }}>{deal.name}</div>

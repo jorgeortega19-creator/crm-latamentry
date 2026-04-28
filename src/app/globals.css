@@ -52,7 +52,21 @@ html, body {
 
 input::placeholder, textarea::placeholder { color: var(--text-muted); }
 
-button { cursor: pointer; font-family: inherit; }
+button, [role="button"], a {
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation; /* eliminates 300ms tap delay */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Table row hover — CSS-only, no JS handlers needed */
+.table-row-interactive {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.table-row-interactive:hover {
+  background: var(--surface-2) !important;
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }

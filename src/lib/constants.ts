@@ -17,13 +17,15 @@ export const STAGES: Stage[] = [
 ]
 
 export const COUNTRIES: Country[] = [
-  { code: 'IN', name: 'India',     flag: '🇮🇳' },
-  { code: 'MX', name: 'Mexico',    flag: '🇲🇽' },
-  { code: 'BR', name: 'Brazil',    flag: '🇧🇷' },
-  { code: 'CO', name: 'Colombia',  flag: '🇨🇴' },
-  { code: 'CL', name: 'Chile',     flag: '🇨🇱' },
-  { code: 'AR', name: 'Argentina', flag: '🇦🇷' },
-  { code: 'PE', name: 'Peru',      flag: '🇵🇪' },
+  { code: 'IN', name: 'India',          flag: '🇮🇳' },
+  { code: 'US', name: 'United States',  flag: '🇺🇸' },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'MX', name: 'Mexico',         flag: '🇲🇽' },
+  { code: 'BR', name: 'Brazil',         flag: '🇧🇷' },
+  { code: 'CO', name: 'Colombia',       flag: '🇨🇴' },
+  { code: 'CL', name: 'Chile',          flag: '🇨🇱' },
+  { code: 'AR', name: 'Argentina',      flag: '🇦🇷' },
+  { code: 'PE', name: 'Peru',           flag: '🇵🇪' },
 ]
 
 export const TEAM = [

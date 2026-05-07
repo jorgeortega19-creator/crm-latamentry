@@ -1,6 +1,7 @@
 'use client'
 
 import Icon from '@/components/ui/Icon'
+import GlobalSearch from './GlobalSearch'
 
 interface TopbarProps {
   title: string
@@ -23,31 +24,9 @@ export default function Topbar({ title, subtitle, action }: TopbarProps) {
         {subtitle && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{subtitle}</div>}
       </div>
 
-      <div style={{
-        flex: 1, display: 'flex', alignItems: 'center', gap: 10,
-        padding: '8px 14px',
-        background: 'var(--surface-1)',
-        border: '1px solid var(--hairline)',
-        borderRadius: 8, maxWidth: 480,
-      }}>
-        <Icon name="search" size={14} color="var(--text-dim)"/>
-        <input
-          placeholder="Search contacts, deals, companies…"
-          style={{
-            flex: 1, background: 'transparent', border: 'none',
-            outline: 'none', fontSize: 13, color: 'var(--text)',
-            padding: 0,
-          }}
-        />
-        <span style={{
-          fontSize: 10, padding: '2px 6px',
-          border: '1px solid var(--hairline-strong)',
-          borderRadius: 4, color: 'var(--text-muted)',
-          fontFamily: 'JetBrains Mono, monospace',
-        }}>⌘K</span>
-      </div>
+      <GlobalSearch/>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '0 0 auto' }}>
         <button style={{
           width: 36, height: 36, borderRadius: 8,
           display: 'grid', placeItems: 'center',

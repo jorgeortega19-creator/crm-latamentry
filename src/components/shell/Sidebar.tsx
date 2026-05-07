@@ -15,7 +15,6 @@ const NAV = [
   { id: 'contacts',  label: 'Contacts',   icon: 'contacts'  as const, path: '/contacts' },
 ]
 const NAV2 = [
-  { id: 'inbox',    label: 'Inbox',    icon: 'inbox'    as const, path: '/inbox',    badge: '4', soft: true },
   { id: 'reports',  label: 'Reports',  icon: 'reports'  as const, path: '/reports' },
   { id: 'settings', label: 'Settings', icon: 'settings' as const, path: '/settings' },
 ]

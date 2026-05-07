@@ -19,6 +19,10 @@ export default function LoginPage() {
       setError('Email and password are required')
       return
     }
+    if (!email.toLowerCase().endsWith('@latam-entry.com')) {
+      setError('Only @latam-entry.com accounts are allowed')
+      return
+    }
     setLoading(true)
     setError(null)
 

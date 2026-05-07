@@ -1,0 +1,92 @@
+const ADMIN_EMAIL = 'jortega@latam-entry.com'
+const FROM = 'Latam Entry CRM <noreply@latam-entry.com>'
+const CRM_URL = 'https://crm.latam-entry.com'
+
+export async function sendEmail({ to, subject, html }: { to: string[]; subject: string; html: string }) {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.warn('[email] RESEND_API_KEY not set — skipping email send')
+    return
+  }
+  const unique = [...new Set(to.filter(Boolean))]
+  if (!unique.length) return
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: FROM, to: unique, subject, html }),
+    })
+    if (!res.ok) {
+      const err = await res.text()
+      console.error('[email] Resend error:', err)
+    }
+  } catch (e) {
+    console.error('[email] Failed to send:', e)
+  }
+}
+
+export function dealCreatedHtml(deal: {
+  name: string; company_name: string; country: string; pkg: string;
+  tcv: number; stage: string; owner_name: string | null; close_date: string | null
+}) {
+  const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+  return `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#111;color:#f5f5f5;border-radius:12px;overflow:hidden;">
+  <div style="background:#FAC51C;padding:20px 28px;">
+    <h2 style="margin:0;color:#080808;font-size:18px;">New Deal Created</h2>
+  </div>
+  <div style="padding:24px 28px;">
+    <p style="margin:0 0 20px;color:#ccc;">A new deal has been created in the Latam Entry CRM.</p>
+    <table style="width:100%;border-collapse:collapse;">
+      ${row('Deal Name', deal.name)}
+      ${row('Company', deal.company_name)}
+      ${row('TCV', fmt(deal.tcv))}
+      ${row('Stage', deal.stage.replace('_', ' '))}
+      ${row('Owner', deal.owner_name || '—')}
+      ${row('Close Date', deal.close_date || '—')}
+    </table>
+    <div style="margin-top:24px;">
+      <a href="${CRM_URL}/pipeline" style="display:inline-block;background:#FAC51C;color:#080808;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">View Pipeline →</a>
+    </div>
+  </div>
+</div>`
+}
+
+export function stageChangedHtml(deal: {
+  name: string; company_name: string; tcv: number; owner_name: string | null
+}, oldStage: string, newStage: string, reason?: string) {
+  const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+  const isLost = newStage === 'closed_lost'
+  const headerColor = isLost ? '#FF4D4F' : '#FAC51C'
+  const title = isLost ? 'Deal Marked as Lost' : 'Deal Stage Updated'
+  return `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#111;color:#f5f5f5;border-radius:12px;overflow:hidden;">
+  <div style="background:${headerColor};padding:20px 28px;">
+    <h2 style="margin:0;color:#080808;font-size:18px;">${title}</h2>
+  </div>
+  <div style="padding:24px 28px;">
+    <table style="width:100%;border-collapse:collapse;">
+      ${row('Deal', deal.name)}
+      ${row('Company', deal.company_name)}
+      ${row('TCV', fmt(deal.tcv))}
+      ${row('Owner', deal.owner_name || '—')}
+      ${row('Previous Stage', oldStage.replace(/_/g, ' '))}
+      ${row('New Stage', newStage.replace(/_/g, ' '))}
+      ${reason ? row('Reason of Lost', reason) : ''}
+    </table>
+    <div style="margin-top:24px;">
+      <a href="${CRM_URL}/pipeline" style="display:inline-block;background:#FAC51C;color:#080808;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">View Pipeline →</a>
+    </div>
+  </div>
+</div>`
+}
+
+function row(label: string, value: string) {
+  return `<tr>
+    <td style="padding:8px 0;color:#999;font-size:13px;width:140px;">${label}</td>
+    <td style="padding:8px 0;font-weight:600;font-size:13px;">${value}</td>
+  </tr>`
+}
+
+export { ADMIN_EMAIL }

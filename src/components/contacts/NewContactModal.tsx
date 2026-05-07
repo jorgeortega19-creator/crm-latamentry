@@ -35,6 +35,7 @@ export default function NewContactModal({ onClose, onCreated }: Props) {
     if (Object.keys(er).length) { setErrors(er); return }
 
     setSaving(true)
+    const { data: { user } } = await supabase.auth.getUser()
     const { data, error } = await supabase.from('contacts').insert({
       name: form.name,
       title: form.title || null,
@@ -44,6 +45,7 @@ export default function NewContactModal({ onClose, onCreated }: Props) {
       country: form.country,
       status: form.status,
       pkg: form.pkg,
+      owner_id: user?.id ?? null,
       owner_name: form.owner,
     }).select().single()
 

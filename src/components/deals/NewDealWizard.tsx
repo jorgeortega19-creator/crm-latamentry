@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Icon from '@/components/ui/Icon'
+import DatePicker from '@/components/ui/DatePicker'
 import { COUNTRIES, SERVICE_PACKAGES, STAGES, TEAM, getPkg, getStage, fmtCurrency } from '@/lib/constants'
 import type { Contact, Deal } from '@/lib/types'
 
@@ -16,13 +17,20 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
   const [contacts, setContacts] = useState<Contact[]>([])
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [showNewContact, setShowNewContact] = useState(false)
   const supabase = createClient()
 
   const [form, setForm] = useState({
-    name: '', company: '', country: 'IN', contact_id: '',
+    name: '', company: '', country: 'MX', contact_id: '',
     pkg: 'sales-enablement', tcv: '', term: '12',
-    stage: 'discovery', close_date: '', owner: 'Diego R.',
+    stage: 'discovery', close_date: '', owner: 'Jorge Ortega',
   })
+
+  const [newContact, setNewContact] = useState({
+    name: '', email: '', title: '', phone: '',
+  })
+  const [savingContact, setSavingContact] = useState(false)
+  const [contactError, setContactError] = useState('')
 
   useEffect(() => {
     supabase.from('contacts').select('id, name, company_name').order('name')
@@ -32,6 +40,35 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
   const set = (k: string, v: string) => {
     setForm(f => ({ ...f, [k]: v }))
     setErrors(e => { const n = { ...e }; delete n[k]; return n })
+  }
+
+  const setNC = (k: string, v: string) => {
+    setNewContact(f => ({ ...f, [k]: v }))
+    setContactError('')
+  }
+
+  const createContact = async () => {
+    if (!newContact.name.trim()) { setContactError('Name is required'); return }
+    if (!newContact.email.trim()) { setContactError('Email is required'); return }
+    setSavingContact(true)
+    const { data, error } = await supabase.from('contacts').insert({
+      name: newContact.name.trim(),
+      email: newContact.email.trim(),
+      title: newContact.title.trim() || null,
+      phone: newContact.phone.trim() || null,
+      company_name: form.company || null,
+      country: form.country,
+      status: 'Prospect',
+      pkg: form.pkg,
+      value: 0,
+    }).select().single()
+    setSavingContact(false)
+    if (error) { setContactError(error.message); return }
+    const c = data as Contact
+    setContacts(prev => [...prev, c])
+    set('contact_id', c.id)
+    setShowNewContact(false)
+    setNewContact({ name: '', email: '', title: '', phone: '' })
   }
 
   const pkg = getPkg(form.pkg)
@@ -57,7 +94,15 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
 
   const submit = async () => {
     setSaving(true)
+    const { data: { user } } = await supabase.auth.getUser()
     const contact = contacts.find(c => c.id === form.contact_id)
+
+    if (form.company.trim()) {
+      await supabase.from('companies').insert(
+        { name: form.company.trim(), country: form.country }
+      )
+    }
+
     const { data, error } = await supabase.from('deals').insert({
       name: form.name,
       company_name: form.company,
@@ -72,12 +117,23 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
       stage: form.stage,
       probability: stage?.probability || 10,
       close_date: form.close_date || null,
+      owner_id: user?.id ?? null,
       owner_name: form.owner,
     }).select().single()
 
     setSaving(false)
     if (error) { setErrors({ submit: error.message }); return }
-    onCreated(data as Deal)
+
+    const newDeal = data as Deal
+    onCreated(newDeal)
+
+    // Send confirmation email (fire-and-forget)
+    fetch('/api/email/deal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'created', dealId: newDeal.id }),
+    })
+
     onClose()
   }
 
@@ -122,10 +178,45 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
                 </Field>
               </div>
               <Field label="Primary contact">
-                <select value={form.contact_id} onChange={e => set('contact_id', e.target.value)} style={{ ...iStyle(false), appearance: 'none' as const }}>
-                  <option value="">— None —</option>
-                  {contacts.map(c => <option key={c.id} value={c.id}>{c.name} {c.company_name ? `(${c.company_name})` : ''}</option>)}
-                </select>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <select value={form.contact_id} onChange={e => set('contact_id', e.target.value)} style={{ ...iStyle(false), appearance: 'none' as const }}>
+                    <option value="">— None —</option>
+                    {contacts.map(c => <option key={c.id} value={c.id}>{c.name} {c.company_name ? `(${c.company_name})` : ''}</option>)}
+                  </select>
+                  <button
+                    onClick={() => setShowNewContact(v => !v)}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--gold)', background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer' }}
+                  >
+                    <Icon name={showNewContact ? 'chevron-up' : 'plus'} size={11} color="var(--gold)"/>
+                    {showNewContact ? 'Cancel new contact' : '+ Create new contact'}
+                  </button>
+
+                  {showNewContact && (
+                    <div style={{ background: 'var(--surface-2)', border: '1px solid var(--hairline)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 2 }}>New contact</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <Field label="Name" required>
+                          <input value={newContact.name} onChange={e => setNC('name', e.target.value)} placeholder="Full name" style={iStyle(false)}/>
+                        </Field>
+                        <Field label="Email" required>
+                          <input type="email" value={newContact.email} onChange={e => setNC('email', e.target.value)} placeholder="email@company.com" style={iStyle(false)}/>
+                        </Field>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <Field label="Title">
+                          <input value={newContact.title} onChange={e => setNC('title', e.target.value)} placeholder="CEO, VP Sales…" style={iStyle(false)}/>
+                        </Field>
+                        <Field label="Phone">
+                          <input type="tel" value={newContact.phone} onChange={e => setNC('phone', e.target.value)} placeholder="+1 415 555 1234" style={iStyle(false)}/>
+                        </Field>
+                      </div>
+                      {contactError && <div style={{ fontSize: 11, color: 'var(--negative)' }}>{contactError}</div>}
+                      <button onClick={createContact} disabled={savingContact} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'var(--gold)', color: '#080808', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600 }}>
+                        {savingContact ? 'Creating…' : 'Create & link contact'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </Field>
             </div>
           )}
@@ -181,7 +272,11 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <Field label="Expected close date">
-                  <input type="date" value={form.close_date} onChange={e => set('close_date', e.target.value)} style={iStyle(false)}/>
+                  <DatePicker
+                    value={form.close_date}
+                    onChange={v => set('close_date', v)}
+                    placeholder="Pick a date"
+                  />
                 </Field>
                 <Field label="Owner">
                   <select value={form.owner} onChange={e => set('owner', e.target.value)} style={{ ...iStyle(false), appearance: 'none' as const }}>

@@ -7,6 +7,7 @@ import Topbar from '@/components/shell/Topbar'
 import NewContactModal from '@/components/contacts/NewContactModal'
 import Icon from '@/components/ui/Icon'
 import { getCountry, fmtCurrency, fmtDate } from '@/lib/constants'
+import { exportContacts } from '@/lib/export'
 import type { Contact, ContactStatus } from '@/lib/types'
 
 interface Props { initialContacts: Contact[] }
@@ -127,6 +128,14 @@ export default function ContactsClient({ initialContacts }: Props) {
                 {deleting ? 'Deleting…' : `Delete ${selected.size}`}
               </button>
             )}
+            <button onClick={() => exportContacts(filtered)} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 12px', fontSize: 12, fontWeight: 500,
+              border: '1px solid var(--hairline)', borderRadius: 8,
+              background: 'var(--surface-2)', color: 'var(--text)',
+            }}>
+              <Icon name="download" size={13}/>Export CSV
+            </button>
           </div>
         </div>
 

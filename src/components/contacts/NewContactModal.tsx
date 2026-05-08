@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Icon from '@/components/ui/Icon'
-import { COUNTRIES, SERVICE_PACKAGES, TEAM } from '@/lib/constants'
+import { SERVICE_PACKAGES, TEAM } from '@/lib/constants'
+import CountrySelect from '@/components/ui/CountrySelect'
 import type { Contact } from '@/lib/types'
 
 interface Props {
@@ -106,9 +107,7 @@ export default function NewContactModal({ onClose, onCreated }: Props) {
               <input value={form.company} onChange={e => set('company', e.target.value)} placeholder="Acme Inc." style={iStyle(!!errors.company)}/>
             </Field>
             <Field label="Country">
-              <select value={form.country} onChange={e => set('country', e.target.value)} style={{ ...iStyle(false), appearance: 'none' as const }}>
-                {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
-              </select>
+              <CountrySelect value={form.country} onChange={v => set('country', v)}/>
             </Field>
           </div>
 

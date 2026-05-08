@@ -1,10 +1,10 @@
 import type { ServicePackage, Stage, Country } from './types'
 
 export const SERVICE_PACKAGES: ServicePackage[] = [
-  { id: 'lead-gen',           name: 'Lead Gen',           fee_pct: 0   },
-  { id: 'sales-enablement',   name: 'Sales Enablement',   fee_pct: 7   },
-  { id: 'commercial-arm',     name: 'Commercial Arm',     fee_pct: 5   },
-  { id: 'strategic-accounts', name: 'Strategic Accounts', fee_pct: 3   },
+  { id: 'lead-gen',           name: 'Lead Gen',           fee_pct: 0, term_months: 2,  term_label: '2 months'  },
+  { id: 'sales-enablement',   name: 'Sales Enablement',   fee_pct: 7, term_months: 3,  term_label: '3 months'  },
+  { id: 'commercial-arm',     name: 'Commercial Arm',     fee_pct: 5, term_months: 6,  term_label: '6 months'  },
+  { id: 'strategic-accounts', name: 'Strategic Accounts', fee_pct: 3, term_months: 12, term_label: '12 months' },
 ]
 
 export const STAGES: Stage[] = [

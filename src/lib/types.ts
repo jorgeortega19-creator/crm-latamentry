@@ -18,6 +18,10 @@ export interface Company {
   logo?: string
   country: string
   website?: string
+  address?: string
+  activity?: string
+  linkedin?: string
+  employee_count?: string
   created_at: string
   updated_at: string
 }
@@ -79,6 +83,8 @@ export interface ServicePackage {
   id: string
   name: string
   fee_pct: number
+  term_months: number
+  term_label: string
 }
 
 export interface Stage {

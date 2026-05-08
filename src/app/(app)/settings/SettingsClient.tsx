@@ -126,19 +126,27 @@ export default function SettingsClient({ profile }: Props) {
             </div>
             <div>
               <div style={labelStyle}>Full name</div>
-              <input value={name} onChange={e => setName(e.target.value)} style={inputStyle}/>
+              {isAdmin
+                ? <input value={name} onChange={e => setName(e.target.value)} style={inputStyle}/>
+                : <div style={{ fontSize: 13, color: 'var(--text-dim)', padding: '10px 12px', background: 'var(--surface-3)', borderRadius: 8, border: '1px solid var(--hairline)' }}>{name || '—'}</div>
+              }
             </div>
             <div>
               <div style={labelStyle}>Role</div>
-              <input value={role} onChange={e => setRole(e.target.value)} style={inputStyle}/>
+              {isAdmin
+                ? <input value={role} onChange={e => setRole(e.target.value)} style={inputStyle}/>
+                : <div style={{ fontSize: 13, color: 'var(--text-dim)', padding: '10px 12px', background: 'var(--surface-3)', borderRadius: 8, border: '1px solid var(--hairline)' }}>{role || '—'}</div>
+              }
             </div>
-            <button onClick={save} disabled={saving} style={{
-              alignSelf: 'flex-start', padding: '9px 18px', fontSize: 13, fontWeight: 600,
-              background: saved ? 'var(--positive)' : 'var(--gold)',
-              color: '#080808', borderRadius: 8, border: 'none', transition: 'background 0.2s',
-            }}>
-              {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save changes'}
-            </button>
+            {isAdmin && (
+              <button onClick={save} disabled={saving} style={{
+                alignSelf: 'flex-start', padding: '9px 18px', fontSize: 13, fontWeight: 600,
+                background: saved ? 'var(--positive)' : 'var(--gold)',
+                color: '#080808', borderRadius: 8, border: 'none', transition: 'background 0.2s',
+              }}>
+                {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save changes'}
+              </button>
+            )}
           </div>
         </div>
 

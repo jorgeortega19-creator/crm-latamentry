@@ -35,6 +35,7 @@ export default function AddCompanyModal({ onClose, onCreated }: Props) {
       .from('companies').select('id').eq('name', form.name.trim()).maybeSingle()
     if (existing) { setErrors({ name: 'A company with this name already exists' }); setSaving(false); return }
 
+    const { data: { user } } = await supabase.auth.getUser()
     const { data, error } = await supabase.from('companies').insert({
       name: form.name.trim(),
       country: form.country,
@@ -43,6 +44,7 @@ export default function AddCompanyModal({ onClose, onCreated }: Props) {
       activity: form.activity.trim() || null,
       linkedin: form.linkedin.trim() || null,
       employee_count: form.employee_count || null,
+      created_by: user?.id ?? null,
     }).select().single()
 
     setSaving(false)

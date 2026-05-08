@@ -22,6 +22,7 @@ export interface Company {
   activity?: string
   linkedin?: string
   employee_count?: string
+  created_by?: string
   created_at: string
   updated_at: string
 }
@@ -63,6 +64,7 @@ export interface Deal {
   close_date?: string
   owner_id?: string
   owner_name?: string
+  overdue_notified_at?: string | null
   last_activity?: string
   created_at: string
   updated_at: string

@@ -155,6 +155,7 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
           activity: companyDetails.activity.trim() || null,
           linkedin: companyDetails.linkedin.trim() || null,
           employee_count: companyDetails.employee_count || null,
+          created_by: user?.id ?? null,
         }).select('id').single()
         // Fire email notification for new company
         if (newCo?.id) {

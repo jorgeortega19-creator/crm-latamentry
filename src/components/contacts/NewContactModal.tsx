@@ -103,6 +103,7 @@ export default function NewContactModal({ onClose, onCreated }: Props) {
           activity: companyDetails.activity.trim() || null,
           linkedin: companyDetails.linkedin.trim() || null,
           employee_count: companyDetails.employee_count || null,
+          created_by: currentUserId ?? null,
         }).select('id').single()
         newCompanyId = newCo?.id ?? null
       }

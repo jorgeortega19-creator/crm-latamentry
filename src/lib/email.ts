@@ -124,6 +124,32 @@ export function contactCreatedHtml(contact: { name: string; email: string; compa
 </div>`
 }
 
+export function overdueEmailHtml(deal: {
+  name: string; company_name: string; tcv: number; close_date: string; owner_name: string | null; stage: string
+}) {
+  const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+  return `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#111;color:#f5f5f5;border-radius:12px;overflow:hidden;">
+  <div style="background:#FF4D4F;padding:20px 28px;">
+    <h2 style="margin:0;color:#fff;font-size:18px;">⚠ Overdue Deal — Action Required</h2>
+  </div>
+  <div style="padding:24px 28px;">
+    <p style="margin:0 0 20px;color:#ccc;">This deal has passed its expected close date and needs to be updated.</p>
+    <table style="width:100%;border-collapse:collapse;">
+      ${row('Deal', deal.name)}
+      ${row('Company', deal.company_name)}
+      ${row('TCV', fmt(deal.tcv))}
+      ${row('Current Stage', deal.stage.replace(/_/g, ' '))}
+      ${row('Owner', deal.owner_name || '—')}
+      ${row('Close Date', deal.close_date)}
+    </table>
+    <div style="margin-top:24px;">
+      <a href="${CRM_URL}/pipeline" style="display:inline-block;background:#FAC51C;color:#080808;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">View Pipeline →</a>
+    </div>
+  </div>
+</div>`
+}
+
 export function welcomeEmailHtml(name: string, email: string, tempPassword: string) {
   return `
 <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#111;color:#f5f5f5;border-radius:12px;overflow:hidden;">

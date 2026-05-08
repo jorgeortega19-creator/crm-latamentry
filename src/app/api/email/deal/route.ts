@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendEmail, dealCreatedHtml, stageChangedHtml, ADMIN_EMAIL } from '@/lib/email'
+import { sendEmail, dealCreatedHtml, stageChangedHtml, overdueEmailHtml, ADMIN_EMAIL } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerClient()
@@ -31,6 +31,12 @@ export async function POST(req: NextRequest) {
       to: recipients,
       subject: `New Deal: ${deal.name}`,
       html: dealCreatedHtml(deal),
+    })
+  } else if (type === 'overdue') {
+    await sendEmail({
+      to: recipients,
+      subject: `⚠ Overdue Deal: ${deal.name}`,
+      html: overdueEmailHtml(deal),
     })
   } else if (type === 'stage_changed' || type === 'marked_lost') {
     await sendEmail({

@@ -23,6 +23,14 @@ interface Props {
   initialDeals: Deal[]
   isAdmin: boolean
   userId: string | null
+  newlyOverdueDealIds: string[]
+}
+
+interface PendingMove {
+  dealId: string
+  dealName: string
+  originalStage: DealStage
+  newStage: DealStage
 }
 
 function customCollision(args: Parameters<typeof pointerWithin>[0]) {
@@ -31,28 +39,44 @@ function customCollision(args: Parameters<typeof pointerWithin>[0]) {
   return rectIntersection(args)
 }
 
-// Returns true if moving from fromStage to toStage is not allowed:
-// - Backward movement is blocked
-// - Dragging directly to closed_lost is blocked (use Mark as Lost button)
 function isBlockedMove(fromStage: string, toStage: string): boolean {
   if (toStage === 'closed_lost') return true
   const fromIdx = STAGES.findIndex(s => s.id === fromStage)
   const toIdx = STAGES.findIndex(s => s.id === toStage)
-  // Block backward moves and skipping more than one stage forward
   return toIdx < fromIdx || toIdx > fromIdx + 1
 }
 
-export default function PipelineClient({ initialDeals, isAdmin, userId }: Props) {
+const TODAY = new Date().toISOString().split('T')[0]
+
+function isOverdue(deal: Deal): boolean {
+  return !!(deal.close_date && deal.close_date < TODAY &&
+    deal.stage !== 'closed_won' && deal.stage !== 'closed_lost')
+}
+
+export default function PipelineClient({ initialDeals, isAdmin, userId, newlyOverdueDealIds }: Props) {
   const [deals, setDeals] = useState(initialDeals)
   const [showNewDeal, setShowNewDeal] = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null)
+  const [pendingMove, setPendingMove] = useState<PendingMove | null>(null)
+  const [confirming, setConfirming] = useState(false)
   const supabase = createClient()
 
   const dealsRef = useRef(deals)
   useEffect(() => { dealsRef.current = deals }, [deals])
 
   const dragStartStage = useRef<DealStage | null>(null)
+
+  // Fire overdue emails on first render (fire-and-forget)
+  useEffect(() => {
+    newlyOverdueDealIds.forEach(dealId => {
+      fetch('/api/email/deal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'overdue', dealId }),
+      })
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -92,7 +116,6 @@ export default function PipelineClient({ initialDeals, isAdmin, userId }: Props)
 
     if (!newStage) return
 
-    // Block backward moves and dragging to closed_lost
     const originalStage = dragStartStage.current
     if (originalStage && isBlockedMove(originalStage, newStage)) return
 
@@ -103,7 +126,7 @@ export default function PipelineClient({ initialDeals, isAdmin, userId }: Props)
     ))
   }, [])
 
-  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event
     setActiveDragId(null)
 
@@ -125,33 +148,54 @@ export default function PipelineClient({ initialDeals, isAdmin, userId }: Props)
     const originalStage = dragStartStage.current
     const newStage = deal.stage
 
-    // Safety check — should not happen due to handleDragOver restriction
-    if (originalStage && isBlockedMove(originalStage, newStage)) {
+    if (!originalStage || newStage === originalStage) return
+
+    if (isBlockedMove(originalStage, newStage)) {
       setDeals(prev => prev.map(d =>
         d.id === dealId ? { ...d, stage: originalStage, probability: getStage(originalStage)?.probability ?? d.probability } : d
       ))
       return
     }
 
+    // Show confirmation modal instead of committing immediately
+    setPendingMove({ dealId, dealName: deal.name, originalStage, newStage })
+  }, [])
+
+  const confirmMove = useCallback(async () => {
+    if (!pendingMove) return
+    const { dealId, originalStage, newStage } = pendingMove
+    const deal = dealsRef.current.find(d => d.id === dealId)
+    if (!deal) { setPendingMove(null); return }
+
+    setConfirming(true)
     const { error } = await supabase
       .from('deals')
-      .update({ stage: deal.stage, probability: deal.probability })
+      .update({ stage: newStage, probability: getStage(newStage)?.probability ?? deal.probability })
       .eq('id', dealId)
+    setConfirming(false)
 
     if (error) {
-      const stage = originalStage ?? deal.stage
       setDeals(prev => prev.map(d =>
-        d.id === dealId ? { ...d, stage, probability: getStage(stage)?.probability ?? d.probability } : d
+        d.id === dealId ? { ...d, stage: originalStage, probability: getStage(originalStage)?.probability ?? d.probability } : d
       ))
-    } else if (originalStage && newStage !== originalStage) {
-      // Stage advanced — trigger email notification (fire-and-forget)
+    } else {
       fetch('/api/email/deal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'stage_changed', dealId, oldStage: originalStage, newStage }),
       })
     }
-  }, [supabase])
+    setPendingMove(null)
+  }, [pendingMove, supabase])
+
+  const cancelMove = useCallback(() => {
+    if (!pendingMove) return
+    const { dealId, originalStage } = pendingMove
+    setDeals(prev => prev.map(d =>
+      d.id === dealId ? { ...d, stage: originalStage, probability: getStage(originalStage)?.probability ?? d.probability } : d
+    ))
+    setPendingMove(null)
+  }, [pendingMove])
 
   const activeDeal = deals.find(d => d.id === activeDragId)
   const dealsInStage = (stage: DealStage) => deals.filter(d => d.stage === stage)
@@ -223,6 +267,16 @@ export default function PipelineClient({ initialDeals, isAdmin, userId }: Props)
         </DragOverlay>
       </DndContext>
 
+      {/* Stage advance confirmation modal */}
+      {pendingMove && (
+        <ConfirmStageModal
+          move={pendingMove}
+          confirming={confirming}
+          onConfirm={confirmMove}
+          onCancel={cancelMove}
+        />
+      )}
+
       {showNewDeal && (
         <NewDealWizard
           onClose={() => setShowNewDeal(false)}
@@ -242,6 +296,87 @@ export default function PipelineClient({ initialDeals, isAdmin, userId }: Props)
           onDeleted={id => { setDeals(prev => prev.filter(d => d.id !== id)); setSelectedDeal(null) }}
         />
       )}
+    </div>
+  )
+}
+
+// ── Confirm modal ─────────────────────────────────────────────────────────────
+
+function ConfirmStageModal({ move, confirming, onConfirm, onCancel }: {
+  move: PendingMove
+  confirming: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const fromStage = getStage(move.originalStage)
+  const toStage = getStage(move.newStage)
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+      backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center',
+      zIndex: 200, padding: 24,
+    }}>
+      <div className="animate-modal-in" style={{
+        width: 'min(440px, 100%)',
+        background: 'var(--surface-1)', border: '1px solid var(--hairline-strong)',
+        borderRadius: 14, overflow: 'hidden',
+        boxShadow: '0 30px 80px rgba(0,0,0,0.7)',
+      }}>
+        {/* Header */}
+        <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--gold-soft)', display: 'grid', placeItems: 'center', flex: '0 0 auto' }}>
+            <Icon name="zap" size={15} color="var(--gold)"/>
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Confirm Stage Advance</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>This action cannot be undone</div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '20px 22px' }}>
+          <div style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16 }}>
+            You are about to advance:
+          </div>
+          <div style={{ background: 'var(--surface-2)', border: '1px solid var(--hairline)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>{move.dealName}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: fromStage?.color }}/>
+                <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{fromStage?.label}</span>
+              </div>
+              <Icon name="chevron-right" size={14} color="var(--text-muted)"/>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: toStage?.color }}/>
+                <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>{toStage?.label}</span>
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Icon name="shield" size={12} color="var(--text-muted)"/>
+            Are you sure this opportunity is ready to advance?
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '14px 22px', borderTop: '1px solid var(--hairline)', display: 'flex', justifyContent: 'flex-end', gap: 8, background: '#0D0D0D' }}>
+          <button
+            onClick={onCancel}
+            disabled={confirming}
+            style={{ padding: '9px 16px', fontSize: 13, fontWeight: 500, border: '1px solid var(--hairline)', borderRadius: 8, background: 'var(--surface-1)', color: 'var(--text)', cursor: 'pointer' }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={confirming}
+            style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, borderRadius: 8, background: 'var(--gold)', color: '#080808', border: 'none', opacity: confirming ? 0.6 : 1, cursor: 'pointer' }}
+          >
+            {confirming ? 'Moving…' : 'Confirm Move →'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -330,6 +465,7 @@ function DealCard({ deal, onClick, isOwner }: { deal: Deal; onClick: () => void;
   } = useSortable({ id: deal.id, data: { type: 'card', stage: deal.stage } })
 
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
+  const overdue = isOverdue(deal)
 
   return (
     <div
@@ -349,8 +485,8 @@ function DealCard({ deal, onClick, isOwner }: { deal: Deal; onClick: () => void;
         transform: CSS.Transform.toString(transform),
         transition: transition ?? undefined,
         opacity: isDragging ? 0 : 1,
-        background: 'var(--surface-2)',
-        border: '1px solid var(--hairline)',
+        background: overdue ? 'rgba(255,77,79,0.06)' : 'var(--surface-2)',
+        border: `1px solid ${overdue ? 'rgba(255,77,79,0.35)' : 'var(--hairline)'}`,
         borderRadius: 8,
         padding: '10px 10px 10px',
         userSelect: 'none',
@@ -359,7 +495,15 @@ function DealCard({ deal, onClick, isOwner }: { deal: Deal; onClick: () => void;
         position: 'relative',
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.4, marginBottom: 2 }}>{deal.name}</div>
+      {overdue && (
+        <div style={{
+          position: 'absolute', top: 6, right: 6,
+          fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
+          background: 'rgba(255,77,79,0.15)', color: 'var(--negative)',
+          padding: '2px 5px', borderRadius: 4, textTransform: 'uppercase',
+        }}>Overdue</div>
+      )}
+      <div style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.4, marginBottom: 2, paddingRight: overdue ? 52 : 0 }}>{deal.name}</div>
       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>{deal.company_name}</div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
@@ -373,8 +517,8 @@ function DealCard({ deal, onClick, isOwner }: { deal: Deal; onClick: () => void;
       </div>
 
       {deal.close_date && (
-        <div style={{ marginTop: 5, fontSize: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
-          <Icon name="calendar" size={9}/>
+        <div style={{ marginTop: 5, fontSize: 10, color: overdue ? 'var(--negative)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
+          <Icon name="calendar" size={9} color={overdue ? 'var(--negative)' : 'var(--text-muted)'}/>
           {new Date(deal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         </div>
       )}

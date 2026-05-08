@@ -11,13 +11,14 @@ import type { Company, Contact } from '@/lib/types'
 interface Props {
   initialCompanies: Company[]
   initialContacts: Pick<Contact, 'id' | 'name' | 'title' | 'email' | 'company_name' | 'status'>[]
+  isAdmin: boolean
 }
 
 const STATUS_COLORS: Record<string, string> = {
   Lead: '#6B7280', Prospect: '#3B82F6', Customer: '#FAC51C',
 }
 
-export default function CompaniesClient({ initialCompanies, initialContacts }: Props) {
+export default function CompaniesClient({ initialCompanies, initialContacts, isAdmin }: Props) {
   const [companies, setCompanies] = useState(initialCompanies)
   const [contacts] = useState(initialContacts)
   const [search, setSearch] = useState('')

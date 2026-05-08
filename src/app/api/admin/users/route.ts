@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { email, name, password } = await req.json()
+  const { email, name, password, is_admin } = await req.json()
 
   if (!email || !name || !password) {
     return NextResponse.json({ error: 'email, name and password are required' }, { status: 400 })
@@ -37,6 +37,8 @@ export async function POST(req: NextRequest) {
   if (!email.endsWith(ALLOWED_DOMAIN)) {
     return NextResponse.json({ error: `Email must be @latam-entry.com` }, { status: 400 })
   }
+
+  const role = is_admin ? 'Managing Partner' : 'Account Executive'
 
   const adminClient = createAdminClient()
   const { data, error } = await adminClient.auth.admin.createUser({
@@ -47,6 +49,12 @@ export async function POST(req: NextRequest) {
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Update profile with role and is_admin flag
+  if (data.user) {
+    await adminClient.from('profiles').update({ role, is_admin: !!is_admin }).eq('id', data.user.id)
+  }
+
   return NextResponse.json({ user: data.user }, { status: 201 })
 }
 

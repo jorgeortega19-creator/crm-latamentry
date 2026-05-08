@@ -32,6 +32,7 @@ export default function SettingsClient({ profile }: Props) {
   const [newEmail, setNewEmail] = useState('')
   const [newName, setNewName] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [newIsAdmin, setNewIsAdmin] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -76,7 +77,7 @@ export default function SettingsClient({ profile }: Props) {
     const res = await fetch('/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: newEmail, name: newName, password: newPassword }),
+      body: JSON.stringify({ email: newEmail, name: newName, password: newPassword, is_admin: newIsAdmin }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -85,6 +86,7 @@ export default function SettingsClient({ profile }: Props) {
       setNewEmail('')
       setNewName('')
       setNewPassword('')
+      setNewIsAdmin(false)
       await loadUsers()
     }
     setCreating(false)
@@ -173,15 +175,33 @@ export default function SettingsClient({ profile }: Props) {
                     />
                   </div>
                 </div>
-                <div>
-                  <div style={labelStyle}>Temporary password</div>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                    placeholder="Min. 6 characters"
-                    style={inputStyle}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <div style={labelStyle}>Temporary password</div>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      placeholder="Min. 6 characters"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <div style={labelStyle}>Role</div>
+                    <button
+                      onClick={() => setNewIsAdmin(v => !v)}
+                      style={{
+                        width: '100%', padding: '10px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                        border: `1px solid ${newIsAdmin ? 'rgba(250,197,28,0.5)' : 'var(--hairline)'}`,
+                        background: newIsAdmin ? 'var(--gold-soft)' : 'var(--surface-2)',
+                        color: newIsAdmin ? 'var(--gold)' : 'var(--text-dim)',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                      }}
+                    >
+                      <Icon name={newIsAdmin ? 'shield' : 'user'} size={13} color={newIsAdmin ? 'var(--gold)' : 'var(--text-dim)'}/>
+                      {newIsAdmin ? 'Managing Partner' : 'Account Executive'}
+                    </button>
+                  </div>
                 </div>
                 {createError && (
                   <div style={{ fontSize: 11, color: 'var(--negative)' }}>{createError}</div>

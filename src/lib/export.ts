@@ -1,4 +1,4 @@
-import type { Contact, Deal } from './types'
+import type { Contact, Deal, Company } from './types'
 import { getPkg, getStage, getCountry } from './constants'
 
 function toCsv(rows: Record<string, string | number>[]) {
@@ -41,6 +41,16 @@ export function exportContacts(contacts: Contact[]) {
     Created: c.created_at.slice(0, 10),
   }))
   download('contacts.csv', toCsv(rows))
+}
+
+export function exportCompanies(companies: Company[]) {
+  const rows = companies.map(c => ({
+    Name: c.name,
+    Country: getCountry(c.country)?.name ?? c.country,
+    Website: c.website ?? '',
+    Created: c.created_at.slice(0, 10),
+  }))
+  download('companies.csv', toCsv(rows))
 }
 
 export function exportDeals(deals: Deal[]) {

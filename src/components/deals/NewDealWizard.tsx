@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Icon from '@/components/ui/Icon'
 import DatePicker from '@/components/ui/DatePicker'
@@ -15,31 +15,82 @@ interface Props {
 export default function NewDealWizard({ onClose, onCreated }: Props) {
   const [step, setStep] = useState(1)
   const [contacts, setContacts] = useState<Contact[]>([])
+  const [companySuggestions, setCompanySuggestions] = useState<string[]>([])
+  const [allCompanies, setAllCompanies] = useState<string[]>([])
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [showNewContact, setShowNewContact] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [currentUserName, setCurrentUserName] = useState('')
   const supabase = createClient()
+  const companyRef = useRef<HTMLDivElement>(null)
 
   const [form, setForm] = useState({
     name: '', company: '', country: 'MX', contact_id: '',
     pkg: 'sales-enablement', tcv: '', term: '12',
-    stage: 'discovery', close_date: '', owner: 'Jorge Ortega',
+    close_date: '', owner: '',
   })
 
-  const [newContact, setNewContact] = useState({
-    name: '', email: '', title: '', phone: '',
-  })
+  const [newContact, setNewContact] = useState({ name: '', email: '', title: '', phone: '' })
   const [savingContact, setSavingContact] = useState(false)
   const [contactError, setContactError] = useState('')
 
   useEffect(() => {
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name, is_admin')
+          .eq('id', user.id)
+          .single()
+        if (profile) {
+          setIsAdmin(profile.is_admin)
+          setCurrentUserName(profile.name)
+          setForm(f => ({ ...f, owner: profile.name }))
+        }
+      }
+    }
+    load()
+
     supabase.from('contacts').select('id, name, company_name').order('name')
       .then(({ data }) => data && setContacts(data as Contact[]))
+
+    supabase.from('companies').select('name').order('name')
+      .then(({ data }) => data && setAllCompanies((data as { name: string }[]).map(c => c.name)))
   }, [supabase])
+
+  // Close company dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (companyRef.current && !companyRef.current.contains(e.target as Node)) {
+        setShowCompanyDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const set = (k: string, v: string) => {
     setForm(f => ({ ...f, [k]: v }))
     setErrors(e => { const n = { ...e }; delete n[k]; return n })
+  }
+
+  const handleCompanyChange = (v: string) => {
+    set('company', v)
+    if (v.trim().length >= 2) {
+      const matches = allCompanies.filter(c => c.toLowerCase().includes(v.toLowerCase()))
+      setCompanySuggestions(matches.slice(0, 6))
+      setShowCompanyDropdown(matches.length > 0)
+    } else {
+      setShowCompanyDropdown(false)
+    }
+  }
+
+  const selectCompany = (name: string) => {
+    set('company', name)
+    setShowCompanyDropdown(false)
   }
 
   const setNC = (k: string, v: string) => {
@@ -75,7 +126,6 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
   const tcv = parseFloat(form.tcv) || 0
   const feePct = pkg?.fee_pct || 0
   const feeAmt = tcv * (feePct / 100)
-  const stage = getStage(form.stage)
 
   const validateStep1 = () => {
     const er: Record<string, string> = {}
@@ -98,8 +148,9 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
     const contact = contacts.find(c => c.id === form.contact_id)
 
     if (form.company.trim()) {
-      await supabase.from('companies').insert(
-        { name: form.company.trim(), country: form.country }
+      await supabase.from('companies').upsert(
+        { name: form.company.trim(), country: form.country },
+        { onConflict: 'name', ignoreDuplicates: true }
       )
     }
 
@@ -114,8 +165,8 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
       term_months: parseInt(form.term) || 12,
       fee_pct: feePct,
       fee_amount: feeAmt,
-      stage: form.stage,
-      probability: stage?.probability || 10,
+      stage: 'discovery',
+      probability: 10,
       close_date: form.close_date || null,
       owner_id: user?.id ?? null,
       owner_name: form.owner,
@@ -127,7 +178,6 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
     const newDeal = data as Deal
     onCreated(newDeal)
 
-    // Send confirmation email (fire-and-forget)
     fetch('/api/email/deal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -144,7 +194,7 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
         {/* Header */}
         <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>New deal</div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>New Opty</div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
               Step {step} of 3 — {step === 1 ? 'Basics' : step === 2 ? 'Package & Value' : 'Review'}
             </div>
@@ -169,7 +219,42 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
               </Field>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <Field label="Company" required error={errors.company}>
-                  <input value={form.company} onChange={e => set('company', e.target.value)} placeholder="Company name" style={iStyle(!!errors.company)}/>
+                  <div ref={companyRef} style={{ position: 'relative' }}>
+                    <input
+                      value={form.company}
+                      onChange={e => handleCompanyChange(e.target.value)}
+                      onFocus={() => {
+                        if (form.company.trim().length >= 2 && companySuggestions.length > 0) setShowCompanyDropdown(true)
+                      }}
+                      placeholder="Company name"
+                      style={iStyle(!!errors.company)}
+                      autoComplete="off"
+                    />
+                    {showCompanyDropdown && (
+                      <div style={{
+                        position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+                        background: 'var(--surface-2)', border: '1px solid var(--hairline)',
+                        borderRadius: 8, marginTop: 4, overflow: 'hidden',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                      }}>
+                        {companySuggestions.map(name => (
+                          <button
+                            key={name}
+                            onMouseDown={() => selectCompany(name)}
+                            style={{
+                              width: '100%', textAlign: 'left', padding: '9px 12px',
+                              fontSize: 13, color: 'var(--text)', background: 'none',
+                              border: 'none', borderBottom: '1px solid var(--hairline)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Icon name="building" size={12}/>{' '}
+                            <span style={{ marginLeft: 6 }}>{name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </Field>
                 <Field label="Country">
                   <select value={form.country} onChange={e => set('country', e.target.value)} style={{ ...iStyle(false), appearance: 'none' as const }}>
@@ -254,20 +339,17 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
                 </Field>
               </div>
 
-              {tcv > 0 && feePct > 0 && (
-                <div style={{ padding: 14, background: 'var(--gold-soft)', borderRadius: 8, border: '1px solid rgba(250,197,28,0.2)' }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 4 }}>Estimated fee</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gold)' }}>{fmtCurrency(feeAmt)}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{feePct}% × {fmtCurrency(tcv)} TCV</div>
-                </div>
-              )}
-
               <Field label="Stage">
-                <select value={form.stage} onChange={e => set('stage', e.target.value)} style={{ ...iStyle(false), appearance: 'none' as const }}>
-                  {STAGES.filter(s => s.id !== 'closed_won' && s.id !== 'closed_lost').map(s => (
-                    <option key={s.id} value={s.id}>{s.label} ({s.probability}%)</option>
-                  ))}
-                </select>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '10px 12px', background: 'var(--surface-2)',
+                  border: '1px solid var(--hairline)', borderRadius: 8,
+                }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3B82F6', flex: '0 0 auto' }}/>
+                  <span style={{ fontSize: 13, color: 'var(--text)' }}>Discovery</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>10%</span>
+                  <Icon name="shield" size={12} color="var(--text-muted)"/>
+                </div>
               </Field>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -279,9 +361,19 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
                   />
                 </Field>
                 <Field label="Owner">
-                  <select value={form.owner} onChange={e => set('owner', e.target.value)} style={{ ...iStyle(false), appearance: 'none' as const }}>
-                    {TEAM.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                  </select>
+                  {isAdmin ? (
+                    <select value={form.owner} onChange={e => set('owner', e.target.value)} style={{ ...iStyle(false), appearance: 'none' as const }}>
+                      {TEAM.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                    </select>
+                  ) : (
+                    <div style={{
+                      padding: '10px 12px', background: 'var(--surface-2)',
+                      border: '1px solid var(--hairline)', borderRadius: 8,
+                      fontSize: 13, color: 'var(--text-dim)',
+                    }}>
+                      {currentUserName || '—'}
+                    </div>
+                  )}
                 </Field>
               </div>
             </div>
@@ -289,7 +381,7 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
 
           {step === 3 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 4 }}>Review your deal before creating</div>
+              <div style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 4 }}>Review your opty before creating</div>
               {[
                 ['Deal name', form.name],
                 ['Company', form.company],
@@ -297,8 +389,7 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
                 ['Package', pkg?.name],
                 ['TCV', tcv > 0 ? fmtCurrency(tcv) : '—'],
                 ['Term', `${form.term} months`],
-                ['Fee', feePct > 0 ? `${fmtCurrency(feeAmt)} (${feePct}%)` : 'No fee'],
-                ['Stage', stage?.label],
+                ['Stage', 'Discovery'],
                 ['Owner', form.owner],
                 ['Close date', form.close_date || '—'],
               ].map(([label, value]) => (
@@ -326,7 +417,7 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
             </button>
           ) : (
             <button onClick={submit} disabled={saving} style={{ padding: '9px 18px', fontSize: 13, fontWeight: 600, borderRadius: 8, background: 'var(--gold)', color: '#080808', border: 'none', opacity: saving ? 0.6 : 1 }}>
-              {saving ? 'Creating…' : 'Create deal'}
+              {saving ? 'Creating…' : 'Create Opty'}
             </button>
           )}
         </div>

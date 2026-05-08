@@ -10,13 +10,13 @@ import { getCountry, fmtCurrency, fmtDate } from '@/lib/constants'
 import { exportContacts } from '@/lib/export'
 import type { Contact, ContactStatus } from '@/lib/types'
 
-interface Props { initialContacts: Contact[] }
+interface Props { initialContacts: Contact[]; isAdmin: boolean; userId: string | null }
 
 const STATUS_COLORS: Record<string, string> = {
   Lead: '#6B7280', Prospect: '#3B82F6', Customer: '#FAC51C',
 }
 
-export default function ContactsClient({ initialContacts }: Props) {
+export default function ContactsClient({ initialContacts, isAdmin, userId }: Props) {
   const [contacts, setContacts] = useState(initialContacts)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<ContactStatus | 'All'>('All')
@@ -29,12 +29,13 @@ export default function ContactsClient({ initialContacts }: Props) {
   useEffect(() => {
     const ch = supabase.channel('contacts-list')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contacts' }, () => {
-        supabase.from('contacts').select('*').order('created_at', { ascending: false })
-          .then(({ data }) => data && setContacts(data))
+        let q = supabase.from('contacts').select('*').order('created_at', { ascending: false })
+        if (!isAdmin && userId) q = q.eq('owner_id', userId)
+        q.then(({ data }) => data && setContacts(data))
       })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
-  }, [supabase])
+  }, [supabase, isAdmin, userId])
 
   const filtered = useMemo(() => {
     return contacts.filter(c => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Icon from '@/components/ui/Icon'
 import { COUNTRIES, SERVICE_PACKAGES, TEAM } from '@/lib/constants'
@@ -15,11 +15,34 @@ export default function NewContactModal({ onClose, onCreated }: Props) {
   const [form, setForm] = useState({
     name: '', title: '', company: '', email: '', phone: '',
     country: 'IN', status: 'Lead' as 'Lead' | 'Prospect' | 'Customer',
-    pkg: 'lead-gen', owner: 'Diego R.',
+    pkg: 'lead-gen', owner: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [currentUserName, setCurrentUserName] = useState('')
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const supabase = createClient()
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentUserId(user.id)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name, is_admin')
+          .eq('id', user.id)
+          .single()
+        if (profile) {
+          setIsAdmin(profile.is_admin)
+          setCurrentUserName(profile.name)
+          setForm(f => ({ ...f, owner: profile.name }))
+        }
+      }
+    }
+    load()
+  }, [supabase])
 
   const set = (k: string, v: string) => {
     setForm(f => ({ ...f, [k]: v }))
@@ -35,7 +58,6 @@ export default function NewContactModal({ onClose, onCreated }: Props) {
     if (Object.keys(er).length) { setErrors(er); return }
 
     setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
     const { data, error } = await supabase.from('contacts').insert({
       name: form.name,
       title: form.title || null,
@@ -45,7 +67,7 @@ export default function NewContactModal({ onClose, onCreated }: Props) {
       country: form.country,
       status: form.status,
       pkg: form.pkg,
-      owner_id: user?.id ?? null,
+      owner_id: currentUserId,
       owner_name: form.owner,
     }).select().single()
 
@@ -119,9 +141,19 @@ export default function NewContactModal({ onClose, onCreated }: Props) {
               </select>
             </Field>
             <Field label="Owner">
-              <select value={form.owner} onChange={e => set('owner', e.target.value)} style={{ ...iStyle(false), appearance: 'none' as const }}>
-                {TEAM.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-              </select>
+              {isAdmin ? (
+                <select value={form.owner} onChange={e => set('owner', e.target.value)} style={{ ...iStyle(false), appearance: 'none' as const }}>
+                  {TEAM.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                </select>
+              ) : (
+                <div style={{
+                  padding: '10px 12px', background: 'var(--surface-2)',
+                  border: '1px solid var(--hairline)', borderRadius: 8,
+                  fontSize: 13, color: 'var(--text-dim)',
+                }}>
+                  {currentUserName || '—'}
+                </div>
+              )}
             </Field>
           </div>
 

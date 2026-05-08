@@ -12,9 +12,11 @@ interface Props {
   contacts: Contact[]
   deals: Deal[]
   activities: Activity[]
+  isAdmin: boolean
+  userId: string | null
 }
 
-export default function DashboardClient({ contacts: initContacts, deals: initDeals, activities: initActivities }: Props) {
+export default function DashboardClient({ contacts: initContacts, deals: initDeals, activities: initActivities, isAdmin, userId }: Props) {
   const [deals, setDeals] = useState(initDeals)
   const [contacts, setContacts] = useState(initContacts)
   const [showNewDeal, setShowNewDeal] = useState(false)
@@ -24,16 +26,18 @@ export default function DashboardClient({ contacts: initContacts, deals: initDea
     const channel = supabase
       .channel('dashboard')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, () => {
-        supabase.from('deals').select('*').order('created_at', { ascending: false })
-          .then(({ data }) => data && setDeals(data))
+        let q = supabase.from('deals').select('*').order('created_at', { ascending: false })
+        if (!isAdmin && userId) q = q.eq('owner_id', userId)
+        q.then(({ data }) => data && setDeals(data))
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contacts' }, () => {
-        supabase.from('contacts').select('*').order('created_at', { ascending: false })
-          .then(({ data }) => data && setContacts(data))
+        let q = supabase.from('contacts').select('*').order('created_at', { ascending: false })
+        if (!isAdmin && userId) q = q.eq('owner_id', userId)
+        q.then(({ data }) => data && setContacts(data))
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [supabase])
+  }, [supabase, isAdmin, userId])
 
   const openDeals = deals.filter(d => d.stage !== 'closed_won' && d.stage !== 'closed_lost')
   const wonDeals = deals.filter(d => d.stage === 'closed_won')
@@ -71,7 +75,7 @@ export default function DashboardClient({ contacts: initContacts, deals: initDea
             }}
           >
             <Icon name="plus" size={14}/>
-            <span>New Deal</span>
+            <span>New Opty</span>
           </button>
         }
       />

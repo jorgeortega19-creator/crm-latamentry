@@ -187,7 +187,7 @@ export default function PipelineClient({ initialDeals, isAdmin, userId }: Props)
               }}
             >
               <Icon name="plus" size={14}/>
-              <span>New Deal</span>
+              <span>New Opty</span>
             </button>
           </div>
         }

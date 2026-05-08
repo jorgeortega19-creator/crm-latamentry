@@ -1,9 +1,9 @@
 'use client'
 
 import {
-  LayoutDashboard, GitBranch, Users, Inbox, BarChart3, Settings,
+  LayoutDashboard, GitBranch, Users, Inbox, BarChart3, Settings, Building2 as BuildingIcon,
   Bell, Search, Plus, X, ChevronRight, ArrowRight, MoreHorizontal,
-  Building2, Mail, Phone, Globe, Calendar, TrendingUp, DollarSign,
+  Mail, Phone, Globe, Calendar, TrendingUp, DollarSign,
   Target, Award, ChevronDown, ChevronUp, Filter, Download, Trash2,
   Edit2, Eye, Check, AlertCircle, Clock, MessageSquare, Paperclip,
   CheckSquare, FileText, Send, Star, Grip, Move, ArrowUpRight,
@@ -24,7 +24,8 @@ const icons = {
   'chevron-right': ChevronRight,
   'arrow-right': ArrowRight,
   more: MoreHorizontal,
-  building: Building2,
+  building: BuildingIcon,
+  companies: BuildingIcon,
   mail: Mail,
   phone: Phone,
   globe: Globe,

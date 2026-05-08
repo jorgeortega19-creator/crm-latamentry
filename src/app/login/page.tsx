@@ -9,8 +9,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
-  const [name, setName] = useState('')
   const router = useRouter()
   const supabase = createClient()
 
@@ -25,58 +23,28 @@ export default function LoginPage() {
     }
     setLoading(true)
     setError(null)
-
     try {
-      if (mode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { name: name || email.split('@')[0] } },
-        })
-        if (error) { setError(error.message); setLoading(false); return }
-        // With autoconfirm enabled, session is available immediately
-        if (data.session) {
-          router.push('/dashboard')
-          router.refresh()
-        } else {
-          // Fallback: email confirmation required
-          setError('Check your email to confirm your account, then sign in.')
-          setLoading(false)
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) { setError(error.message); setLoading(false); return }
-        router.push('/dashboard')
-        router.refresh()
-      }
-    } catch (e) {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) { setError(error.message); setLoading(false); return }
+      router.push('/dashboard')
+      router.refresh()
+    } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
     }
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      background: 'var(--bg)',
-      display: 'grid', placeItems: 'center',
-      padding: 24,
-    }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'var(--bg)', display: 'grid', placeItems: 'center', padding: 24 }}>
       <div style={{
         width: 'min(420px, 100%)',
         background: 'var(--surface-1)',
         border: '1px solid var(--hairline-strong)',
-        borderRadius: 16,
-        padding: '36px 36px 32px',
+        borderRadius: 16, padding: '36px 36px 32px',
         boxShadow: '0 30px 80px rgba(0,0,0,0.7)',
       }} className="animate-modal-in">
-        {/* Brand */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 12,
-            background: '#F5F5F5', padding: 6,
-            display: 'grid', placeItems: 'center',
-          }}>
+          <div style={{ width: 56, height: 56, borderRadius: 12, background: '#F5F5F5', padding: 6, display: 'grid', placeItems: 'center' }}>
             <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
               <circle cx="18" cy="18" r="18" fill="#1A2B4A"/>
               <path d="M10 18 L20 10 L30 18" stroke="#F97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -86,24 +54,11 @@ export default function LoginPage() {
         </div>
 
         <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', textAlign: 'center', marginBottom: 6 }}>
-          {mode === 'login' ? 'Welcome back' : 'Create account'}
+          Welcome back
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 24 }}>
-          {mode === 'login' ? 'Sign in to the Latam Entry CRM' : 'Join the Revenue Enablement platform'}
+          Sign in to the Latam Entry CRM
         </div>
-
-        {mode === 'signup' && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={labelStyle}>Full name</div>
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="e.g. Diego Ramírez"
-              style={inputStyle(false)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-            />
-          </div>
-        )}
 
         <div style={{ marginBottom: 14 }}>
           <div style={labelStyle}>Email</div>
@@ -111,7 +66,7 @@ export default function LoginPage() {
             type="email"
             value={email}
             onChange={e => { setEmail(e.target.value); setError(null) }}
-            placeholder="you@latamentry.com"
+            placeholder="you@latam-entry.com"
             style={inputStyle(!!error)}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           />
@@ -138,39 +93,12 @@ export default function LoginPage() {
             fontSize: 13, fontWeight: 600, borderRadius: 8,
             background: loading ? 'rgba(250,197,28,0.6)' : 'var(--gold)',
             color: '#080808', border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
-            transition: 'opacity 0.15s',
           }}
         >
-          {loading ? 'Signing in…' : mode === 'login' ? 'Sign in' : 'Create account'}
+          {loading ? 'Signing in…' : 'Sign in'}
         </button>
 
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          margin: '20px 0', fontSize: 10,
-          color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.18em',
-        }}>
-          <div style={{ flex: 1, height: 1, background: 'var(--hairline)' }}/>
-          <span>{mode === 'login' ? 'or' : 'already have an account'}</span>
-          <div style={{ flex: 1, height: 1, background: 'var(--hairline)' }}/>
-        </div>
-
-        <button
-          onClick={() => { setMode(m => m === 'login' ? 'signup' : 'login'); setError(null) }}
-          style={{
-            width: '100%', padding: '10px',
-            fontSize: 13, fontWeight: 500,
-            border: '1px solid var(--hairline)', borderRadius: 8,
-            background: 'var(--surface-2)', color: 'var(--text)',
-          }}
-        >
-          {mode === 'login' ? 'Create new account' : 'Sign in instead'}
-        </button>
-
-        <div style={{
-          textAlign: 'center', fontSize: 10,
-          color: 'var(--text-muted)', marginTop: 22,
-          letterSpacing: '0.14em', textTransform: 'uppercase',
-        }}>
+        <div style={{ textAlign: 'center', fontSize: 10, color: 'var(--text-muted)', marginTop: 28, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
           Latam Entry · Revenue Enablement
         </div>
       </div>

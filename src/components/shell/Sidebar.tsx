@@ -1,18 +1,19 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import type { Profile } from '@/lib/types'
 
-interface SidebarProps {
-  user: Profile | null
-}
+interface SidebarProps { user: Profile | null }
 
 const NAV = [
-  { id: 'dashboard', label: 'Dashboard',  icon: 'dashboard' as const, path: '/dashboard' },
-  { id: 'pipeline',  label: 'Pipeline',   icon: 'pipeline'  as const, path: '/pipeline' },
-  { id: 'contacts',  label: 'Contacts',   icon: 'contacts'  as const, path: '/contacts' },
+  { id: 'dashboard',  label: 'Dashboard',  icon: 'dashboard'  as const, path: '/dashboard' },
+  { id: 'pipeline',   label: 'Pipeline',   icon: 'pipeline'   as const, path: '/pipeline' },
+  { id: 'contacts',   label: 'Contacts',   icon: 'contacts'   as const, path: '/contacts' },
+  { id: 'companies',  label: 'Companies',  icon: 'companies'  as const, path: '/companies' },
 ]
 const NAV2 = [
   { id: 'reports',  label: 'Reports',  icon: 'reports'  as const, path: '/reports' },
@@ -68,16 +69,12 @@ export default function Sidebar({ user }: SidebarProps) {
       {/* Nav */}
       <div style={{ padding: '20px 12px 8px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.18em', fontWeight: 600 }}>Workspace</div>
       <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {NAV.map(item => (
-          <NavItem key={item.id} item={item} active={isActive(item.path)} onClick={() => router.push(item.path)}/>
-        ))}
+        {NAV.map(item => <NavItem key={item.id} item={item} active={isActive(item.path)}/>)}
       </nav>
 
       <div style={{ padding: '16px 12px 8px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.18em', fontWeight: 600 }}>More</div>
       <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {NAV2.map(item => (
-          <NavItem key={item.id} item={item} active={isActive(item.path)} onClick={() => router.push(item.path)}/>
-        ))}
+        {NAV2.map(item => <NavItem key={item.id} item={item} active={isActive(item.path)}/>)}
       </nav>
 
       {/* User */}
@@ -97,11 +94,11 @@ export default function Sidebar({ user }: SidebarProps) {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name || 'User'}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.role || 'Account Exec'}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.role || 'Account Executive'}</div>
         </div>
         <button
           onClick={signOut}
-          style={{ width: 28, height: 28, borderRadius: 6, display: 'grid', placeItems: 'center', color: 'var(--text-dim)', border: '1px solid transparent' }}
+          style={{ width: 28, height: 28, borderRadius: 6, display: 'grid', placeItems: 'center', color: 'var(--text-dim)', border: '1px solid transparent', background: 'transparent', cursor: 'pointer' }}
           title="Sign out"
         >
           <Icon name="logout" size={14}/>
@@ -111,23 +108,22 @@ export default function Sidebar({ user }: SidebarProps) {
   )
 }
 
-function NavItem({ item, active, onClick }: {
-  item: { label: string; icon: Parameters<typeof Icon>[0]['name']; badge?: string; soft?: boolean }
+function NavItem({ item, active }: {
+  item: { label: string; icon: Parameters<typeof Icon>[0]['name']; path: string }
   active: boolean
-  onClick: () => void
 }) {
   return (
-    <button
-      onClick={onClick}
+    <Link
+      href={item.path}
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '9px 12px', borderRadius: 8,
         color: active ? 'var(--text)' : 'var(--text-dim)',
         background: active ? 'var(--surface-2)' : 'transparent',
         fontSize: 13, fontWeight: active ? 600 : 500,
-        position: 'relative', border: 'none',
+        position: 'relative',
+        textDecoration: 'none',
         transition: 'background 0.15s, color 0.15s',
-        width: '100%', textAlign: 'left',
       }}
     >
       {active && (
@@ -138,17 +134,6 @@ function NavItem({ item, active, onClick }: {
       )}
       <Icon name={item.icon} size={16}/>
       <span>{item.label}</span>
-      {item.badge && (
-        <span style={{
-          marginLeft: 'auto', fontSize: 10, padding: '2px 6px',
-          borderRadius: 6,
-          background: item.soft ? 'var(--gold-soft)' : 'var(--surface-3)',
-          color: item.soft ? 'var(--gold)' : 'var(--text-dim)',
-          fontWeight: 600,
-        }}>
-          {item.badge}
-        </span>
-      )}
-    </button>
+    </Link>
   )
 }

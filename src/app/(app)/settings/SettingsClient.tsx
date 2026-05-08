@@ -37,7 +37,15 @@ export default function SettingsClient({ profile }: Props) {
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
+  // Password change
+  const [newPwd, setNewPwd] = useState('')
+  const [confirmPwd, setConfirmPwd] = useState('')
+  const [pwdError, setPwdError] = useState<string | null>(null)
+  const [pwdSaved, setPwdSaved] = useState(false)
+  const [pwdSaving, setPwdSaving] = useState(false)
+
   const isAdmin = profile?.is_admin === true
+  const SUPER_ADMIN_EMAIL = 'jortega@latam-entry.com'
 
   const loadUsers = useCallback(async () => {
     setUsersLoading(true)
@@ -65,6 +73,19 @@ export default function SettingsClient({ profile }: Props) {
   const signOut = async () => {
     await supabase.auth.signOut()
     router.push('/login')
+  }
+
+  const changePassword = async () => {
+    setPwdError(null)
+    if (!newPwd || newPwd.length < 6) { setPwdError('Password must be at least 6 characters'); return }
+    if (newPwd !== confirmPwd) { setPwdError('Passwords do not match'); return }
+    setPwdSaving(true)
+    const { error } = await supabase.auth.updateUser({ password: newPwd })
+    setPwdSaving(false)
+    if (error) { setPwdError(error.message); return }
+    setNewPwd(''); setConfirmPwd('')
+    setPwdSaved(true)
+    setTimeout(() => setPwdSaved(false), 3000)
   }
 
   const createUser = async () => {
@@ -257,7 +278,7 @@ export default function SettingsClient({ profile }: Props) {
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{u.email}</div>
                   </div>
-                  {u.id !== profile?.id && (
+                  {u.id !== profile?.id && u.email !== SUPER_ADMIN_EMAIL && (
                     <button
                       onClick={() => deleteUser(u.id)}
                       disabled={deletingId === u.id}
@@ -276,6 +297,35 @@ export default function SettingsClient({ profile }: Props) {
             </div>
           </div>
         )}
+
+        {/* Change Password */}
+        <div style={{ background: 'var(--surface-1)', border: '1px solid var(--hairline)', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Icon name="key" size={15} color="var(--text-dim)"/>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Change Password</span>
+          </div>
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <div style={labelStyle}>New password</div>
+                <input type="password" value={newPwd} onChange={e => { setNewPwd(e.target.value); setPwdError(null) }} placeholder="Min. 6 characters" style={inputStyle}/>
+              </div>
+              <div>
+                <div style={labelStyle}>Confirm password</div>
+                <input type="password" value={confirmPwd} onChange={e => { setConfirmPwd(e.target.value); setPwdError(null) }} placeholder="Repeat password" style={inputStyle}/>
+              </div>
+            </div>
+            {pwdError && <div style={{ fontSize: 11, color: 'var(--negative)' }}>{pwdError}</div>}
+            <button onClick={changePassword} disabled={pwdSaving} style={{
+              alignSelf: 'flex-start', padding: '9px 18px', fontSize: 13, fontWeight: 600,
+              background: pwdSaved ? 'var(--positive)' : 'var(--gold)',
+              color: '#080808', borderRadius: 8, border: 'none', transition: 'background 0.2s',
+              opacity: pwdSaving ? 0.6 : 1,
+            }}>
+              {pwdSaving ? 'Updating…' : pwdSaved ? '✓ Password updated' : 'Update password'}
+            </button>
+          </div>
+        </div>
 
         {/* Account */}
         <div style={{ background: 'var(--surface-1)', border: '1px solid var(--hairline)', borderRadius: 12, overflow: 'hidden' }}>

@@ -110,6 +110,7 @@ export default function GlobalSearch() {
     <>
       {/* Trigger bar */}
       <div
+        className="global-search-wrap"
         onClick={openSearch}
         style={{
           flex: 1, display: 'flex', alignItems: 'center', gap: 10,

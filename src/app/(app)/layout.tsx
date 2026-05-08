@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getUser, getProfile } from '@/lib/cached'
-import Sidebar from '@/components/shell/Sidebar'
+import AppShell from '@/components/shell/AppShell'
 import type { Profile } from '@/lib/types'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -10,11 +10,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const profile = await getProfile()
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--bg)' }}>
-      <Sidebar user={profile as Profile | null}/>
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-        {children}
-      </main>
-    </div>
+    <AppShell profile={profile as Profile | null}>
+      {children}
+    </AppShell>
   )
 }

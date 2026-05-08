@@ -79,3 +79,72 @@ button, [role="button"], a {
 
 .animate-fade-in { animation: fadeIn 0.2s ease forwards; }
 .animate-modal-in { animation: modalIn 0.2s ease forwards; }
+
+/* ── Responsive shell ─────────────────────────────────── */
+
+/* Desktop: sidebar always visible, no overlay */
+.sidebar-wrapper {
+  flex: 0 0 232px;
+  width: 232px;
+  height: 100vh;
+}
+
+@media (max-width: 768px) {
+  /* Sidebar becomes a fixed overlay panel */
+  .sidebar-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 232px;
+    height: 100vh;
+    z-index: 300;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    flex: none;
+  }
+  .sidebar-wrapper.sidebar-open {
+    transform: translateX(0);
+    box-shadow: 4px 0 40px rgba(0,0,0,0.8);
+  }
+
+  /* Show hamburger in topbar */
+  .hamburger-btn {
+    display: grid !important;
+  }
+
+  /* Show close button inside sidebar */
+  .sidebar-close-btn {
+    display: grid !important;
+  }
+
+  /* Modals: full-width on mobile */
+  .modal-panel {
+    width: 100% !important;
+    max-height: 95vh !important;
+    border-radius: 12px 12px 0 0 !important;
+    margin-bottom: 0 !important;
+    align-self: flex-end;
+  }
+
+  /* Collapse 2-col grids in pages */
+  .responsive-2col {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Topbar search shrinks */
+  .global-search-wrap {
+    display: none !important;
+  }
+
+  /* Page padding reduction */
+  .page-content {
+    padding: 16px !important;
+  }
+
+  /* Kanban: horizontal scroll */
+  .kanban-board {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}

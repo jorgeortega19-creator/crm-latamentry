@@ -25,6 +25,9 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
   const [isAdmin, setIsAdmin] = useState(false)
   const [currentUserName, setCurrentUserName] = useState('')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [companyDetails, setCompanyDetails] = useState({
+    website: '', address: '', activity: '', linkedin: '', employee_count: '',
+  })
   const supabase = createClient()
   const companyRef = useRef<HTMLDivElement>(null)
 
@@ -71,6 +74,8 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
     setErrors(e => { const n = { ...e }; delete n[k]; return n })
   }
 
+  const isNewCompany = form.company.trim() !== '' && !allCompanies.map(c => c.toLowerCase()).includes(form.company.trim().toLowerCase())
+
   const handleCompanyChange = (v: string) => {
     set('company', v)
     if (v.trim().length >= 2) {
@@ -81,6 +86,8 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
       setShowCompanyDropdown(false)
     }
   }
+
+  const EMPLOYEE_RANGES = ['1-10', '10-50', '50-100', '100-500', '+500']
 
   const setNC = (k: string, v: string) => { setNewContact(f => ({ ...f, [k]: v })); setContactError('') }
 
@@ -140,7 +147,23 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
       const { data: existing } = await supabase
         .from('companies').select('id').eq('name', form.company.trim()).maybeSingle()
       if (!existing) {
-        await supabase.from('companies').insert({ name: form.company.trim(), country: form.country })
+        const { data: newCo } = await supabase.from('companies').insert({
+          name: form.company.trim(),
+          country: form.country,
+          website: companyDetails.website.trim() || null,
+          address: companyDetails.address.trim() || null,
+          activity: companyDetails.activity.trim() || null,
+          linkedin: companyDetails.linkedin.trim() || null,
+          employee_count: companyDetails.employee_count || null,
+        }).select('id').single()
+        // Fire email notification for new company
+        if (newCo?.id) {
+          fetch('/api/email/company', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ companyId: newCo.id }),
+          })
+        }
       }
     }
 
@@ -239,6 +262,41 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
                   <CountrySelect value={form.country} onChange={v => set('country', v)}/>
                 </Field>
               </div>
+
+              {isNewCompany && (
+                <div style={{ background: 'var(--surface-2)', border: '1px solid var(--gold-soft)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gold)', marginBottom: 2 }}>New company — fill in details</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <Field label="Website">
+                      <input value={companyDetails.website} onChange={e => setCompanyDetails(d => ({ ...d, website: e.target.value }))} placeholder="https://company.com" style={iStyle(false)}/>
+                    </Field>
+                    <Field label="LinkedIn">
+                      <input value={companyDetails.linkedin} onChange={e => setCompanyDetails(d => ({ ...d, linkedin: e.target.value }))} placeholder="linkedin.com/company/…" style={iStyle(false)}/>
+                    </Field>
+                  </div>
+                  <Field label="Address">
+                    <input value={companyDetails.address} onChange={e => setCompanyDetails(d => ({ ...d, address: e.target.value }))} placeholder="123 Main St, City" style={iStyle(false)}/>
+                  </Field>
+                  <Field label="Activity">
+                    <input value={companyDetails.activity} onChange={e => setCompanyDetails(d => ({ ...d, activity: e.target.value }))} placeholder="Describe business activity…" style={iStyle(false)}/>
+                  </Field>
+                  <Field label="Employees">
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {EMPLOYEE_RANGES.map(r => (
+                        <button key={r} type="button" onClick={() => setCompanyDetails(d => ({ ...d, employee_count: d.employee_count === r ? '' : r }))}
+                          style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6, border: '1px solid', cursor: 'pointer',
+                            borderColor: companyDetails.employee_count === r ? 'var(--gold)' : 'var(--hairline)',
+                            background: companyDetails.employee_count === r ? 'var(--gold-soft)' : 'var(--surface-3)',
+                            color: companyDetails.employee_count === r ? 'var(--gold)' : 'var(--text-dim)',
+                            fontWeight: companyDetails.employee_count === r ? 600 : 400,
+                          }}>
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                </div>
+              )}
 
               <Field label="Primary contact">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

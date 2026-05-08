@@ -7,7 +7,10 @@ import { useRouter } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import type { Profile } from '@/lib/types'
 
-interface SidebarProps { user: Profile | null }
+interface SidebarProps {
+  user: Profile | null
+  onClose?: () => void
+}
 
 const NAV = [
   { id: 'dashboard',  label: 'Dashboard',  icon: 'dashboard'  as const, path: '/dashboard' },
@@ -20,7 +23,7 @@ const NAV2 = [
   { id: 'settings', label: 'Settings', icon: 'settings' as const, path: '/settings' },
 ]
 
-export default function Sidebar({ user }: SidebarProps) {
+export default function Sidebar({ user, onClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -60,21 +63,31 @@ export default function Sidebar({ user }: SidebarProps) {
             <path d="M14 18 L14 26 L22 26 L22 18" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.02em' }}>Latam Entry</div>
           <div style={{ fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: 3, fontWeight: 600 }}>Revenue Enablement</div>
         </div>
+        {/* Mobile close button */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="sidebar-close-btn"
+            style={{ width: 28, height: 28, borderRadius: 6, display: 'none', placeItems: 'center', color: 'var(--text-dim)', border: '1px solid var(--hairline)', background: 'transparent', cursor: 'pointer', flex: '0 0 auto' }}
+          >
+            <Icon name="x" size={14}/>
+          </button>
+        )}
       </div>
 
       {/* Nav */}
       <div style={{ padding: '20px 12px 8px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.18em', fontWeight: 600 }}>Workspace</div>
       <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {NAV.map(item => <NavItem key={item.id} item={item} active={isActive(item.path)}/>)}
+        {NAV.map(item => <NavItem key={item.id} item={item} active={isActive(item.path)} onClick={onClose}/>)}
       </nav>
 
       <div style={{ padding: '16px 12px 8px', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.18em', fontWeight: 600 }}>More</div>
       <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {NAV2.map(item => <NavItem key={item.id} item={item} active={isActive(item.path)}/>)}
+        {NAV2.map(item => <NavItem key={item.id} item={item} active={isActive(item.path)} onClick={onClose}/>)}
       </nav>
 
       {/* User */}
@@ -108,13 +121,15 @@ export default function Sidebar({ user }: SidebarProps) {
   )
 }
 
-function NavItem({ item, active }: {
+function NavItem({ item, active, onClick }: {
   item: { label: string; icon: Parameters<typeof Icon>[0]['name']; path: string }
   active: boolean
+  onClick?: () => void
 }) {
   return (
     <Link
       href={item.path}
+      onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '9px 12px', borderRadius: 8,

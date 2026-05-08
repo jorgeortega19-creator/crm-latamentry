@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendEmail, welcomeEmailHtml } from '@/lib/email'
 
 const ALLOWED_DOMAIN = '@latam-entry.com'
+const SUPER_ADMIN_EMAIL = 'jortega@latam-entry.com'
 
 async function requireAdmin() {
   const supabase = await createServerClient()
@@ -50,9 +52,15 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Update profile with role and is_admin flag
   if (data.user) {
     await adminClient.from('profiles').update({ role, is_admin: !!is_admin }).eq('id', data.user.id)
+
+    // Send welcome email (fire-and-forget)
+    sendEmail({
+      to: [email],
+      subject: 'Welcome to Latam Entry CRM',
+      html: welcomeEmailHtml(name, email, password),
+    })
   }
 
   return NextResponse.json({ user: data.user }, { status: 201 })
@@ -70,7 +78,14 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 })
   }
 
+  // Protect super admin — look up the user's email first
   const adminClient = createAdminClient()
+  const { data: targetProfile } = await adminClient
+    .from('profiles').select('email').eq('id', userId).single()
+  if (targetProfile?.email === SUPER_ADMIN_EMAIL) {
+    return NextResponse.json({ error: 'This user cannot be deleted' }, { status: 403 })
+  }
+
   const { error } = await adminClient.auth.admin.deleteUser(userId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

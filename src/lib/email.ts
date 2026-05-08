@@ -82,6 +82,68 @@ export function stageChangedHtml(deal: {
 </div>`
 }
 
+export function companyCreatedHtml(company: { name: string; country: string; activity?: string | null; website?: string | null }) {
+  return `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#111;color:#f5f5f5;border-radius:12px;overflow:hidden;">
+  <div style="background:#3B82F6;padding:20px 28px;">
+    <h2 style="margin:0;color:#fff;font-size:18px;">New Company Added</h2>
+  </div>
+  <div style="padding:24px 28px;">
+    <p style="margin:0 0 20px;color:#ccc;">A new company has been created in the Latam Entry CRM.</p>
+    <table style="width:100%;border-collapse:collapse;">
+      ${row('Company', company.name)}
+      ${row('Country', company.country)}
+      ${company.activity ? row('Activity', company.activity) : ''}
+      ${company.website ? row('Website', company.website) : ''}
+    </table>
+    <div style="margin-top:24px;">
+      <a href="${CRM_URL}/companies" style="display:inline-block;background:#FAC51C;color:#080808;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">View Companies →</a>
+    </div>
+  </div>
+</div>`
+}
+
+export function contactCreatedHtml(contact: { name: string; email: string; company_name?: string | null; owner_name?: string | null }) {
+  return `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#111;color:#f5f5f5;border-radius:12px;overflow:hidden;">
+  <div style="background:#3ECF8E;padding:20px 28px;">
+    <h2 style="margin:0;color:#080808;font-size:18px;">New Contact Created</h2>
+  </div>
+  <div style="padding:24px 28px;">
+    <p style="margin:0 0 20px;color:#ccc;">A new contact has been added to the Latam Entry CRM.</p>
+    <table style="width:100%;border-collapse:collapse;">
+      ${row('Name', contact.name)}
+      ${row('Email', contact.email)}
+      ${contact.company_name ? row('Company', contact.company_name) : ''}
+      ${contact.owner_name ? row('Owner', contact.owner_name) : ''}
+    </table>
+    <div style="margin-top:24px;">
+      <a href="${CRM_URL}/contacts" style="display:inline-block;background:#FAC51C;color:#080808;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">View Contacts →</a>
+    </div>
+  </div>
+</div>`
+}
+
+export function welcomeEmailHtml(name: string, email: string, tempPassword: string) {
+  return `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#111;color:#f5f5f5;border-radius:12px;overflow:hidden;">
+  <div style="background:#FAC51C;padding:20px 28px;">
+    <h2 style="margin:0;color:#080808;font-size:18px;">Welcome to Latam Entry CRM</h2>
+  </div>
+  <div style="padding:24px 28px;">
+    <p style="margin:0 0 16px;color:#ccc;">Hi ${name}, your account has been created.</p>
+    <table style="width:100%;border-collapse:collapse;">
+      ${row('Email', email)}
+      ${row('Temporary Password', tempPassword)}
+    </table>
+    <p style="margin:20px 0 8px;color:#ccc;font-size:13px;">Please log in and change your password in Settings.</p>
+    <div style="margin-top:16px;">
+      <a href="${CRM_URL}/login" style="display:inline-block;background:#FAC51C;color:#080808;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">Go to Login →</a>
+    </div>
+  </div>
+</div>`
+}
+
 function row(label: string, value: string) {
   return `<tr>
     <td style="padding:8px 0;color:#999;font-size:13px;width:140px;">${label}</td>

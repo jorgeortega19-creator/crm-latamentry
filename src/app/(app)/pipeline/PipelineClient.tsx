@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   DndContext, DragOverlay,
   pointerWithin, rectIntersection,
@@ -61,6 +62,16 @@ export default function PipelineClient({ initialDeals, isAdmin, userId, newlyOve
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null)
   const [confirming, setConfirming] = useState(false)
   const supabase = createClient()
+  const searchParams = useSearchParams()
+
+  // Auto-open deal from ?open=<id> (e.g. from global search)
+  useEffect(() => {
+    const openId = searchParams.get('open')
+    if (openId) {
+      const deal = deals.find(d => d.id === openId)
+      if (deal) setSelectedDeal(deal)
+    }
+  }, [searchParams, deals])
 
   const dealsRef = useRef(deals)
   useEffect(() => { dealsRef.current = deals }, [deals])

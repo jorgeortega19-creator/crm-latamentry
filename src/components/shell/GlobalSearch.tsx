@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Icon from '@/components/ui/Icon'
@@ -8,7 +9,7 @@ import { fmtCurrency, getStage } from '@/lib/constants'
 import type { Contact, Deal } from '@/lib/types'
 
 interface SearchResult {
-  type: 'contact' | 'deal'
+  type: 'contact' | 'deal' | 'company'
   id: string
   primary: string
   secondary: string
@@ -41,7 +42,6 @@ export default function GlobalSearch() {
     setResults([])
   }, [])
 
-  // ⌘K / Ctrl+K shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -54,7 +54,6 @@ export default function GlobalSearch() {
     return () => window.removeEventListener('keydown', handler)
   }, [open, openSearch, closeSearch])
 
-  // Debounced search
   useEffect(() => {
     if (!open) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -64,9 +63,13 @@ export default function GlobalSearch() {
       setLoading(true)
       const q = query.trim()
 
-      const [{ data: contacts }, { data: deals }] = await Promise.all([
-        supabase.from('contacts').select('id, name, company_name, email, status').or(`name.ilike.%${q}%,email.ilike.%${q}%,company_name.ilike.%${q}%`).limit(5),
-        supabase.from('deals').select('id, name, company_name, stage, tcv').or(`name.ilike.%${q}%,company_name.ilike.%${q}%`).limit(5),
+      const [{ data: contacts }, { data: deals }, { data: companies }] = await Promise.all([
+        supabase.from('contacts').select('id, name, company_name, email, status')
+          .or(`name.ilike.%${q}%,email.ilike.%${q}%,company_name.ilike.%${q}%`).limit(5),
+        supabase.from('deals').select('id, name, company_name, stage, tcv')
+          .or(`name.ilike.%${q}%,company_name.ilike.%${q}%`).limit(5),
+        supabase.from('companies').select('id, name, country, activity')
+          .or(`name.ilike.%${q}%,activity.ilike.%${q}%`).limit(5),
       ])
 
       const contactResults: SearchResult[] = (contacts ?? []).map((c: any) => ({
@@ -84,10 +87,19 @@ export default function GlobalSearch() {
         primary: d.name,
         secondary: d.company_name,
         tertiary: `${getStage(d.stage)?.label ?? d.stage} · ${fmtCurrency(d.tcv)}`,
-        href: '/pipeline',
+        href: `/pipeline?open=${d.id}`,
       }))
 
-      setResults([...contactResults, ...dealResults])
+      const companyResults: SearchResult[] = (companies ?? []).map((c: any) => ({
+        type: 'company',
+        id: c.id,
+        primary: c.name,
+        secondary: c.activity ?? c.country ?? '',
+        tertiary: c.country,
+        href: `/companies?open=${c.id}`,
+      }))
+
+      setResults([...contactResults, ...dealResults, ...companyResults])
       setCursor(0)
       setLoading(false)
     }, 200)
@@ -105,6 +117,83 @@ export default function GlobalSearch() {
     if (e.key === 'ArrowUp') { e.preventDefault(); setCursor(c => Math.max(c - 1, 0)) }
     if (e.key === 'Enter' && results[cursor]) navigate(results[cursor])
   }
+
+  const overlay = open ? (
+    <div
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+        zIndex: 9999,
+        display: 'grid', placeItems: 'start center', paddingTop: '15vh',
+      }}
+      onClick={e => { if (e.target === e.currentTarget) closeSearch() }}
+    >
+      <div
+        style={{ width: 'min(560px, calc(100vw - 32px))', background: 'var(--surface-1)', border: '1px solid var(--hairline-strong)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.8)' }}
+        className="animate-modal-in"
+      >
+        {/* Input */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderBottom: '1px solid var(--hairline)' }}>
+          <Icon name="search" size={16} color="var(--text-dim)"/>
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={handleKey}
+            placeholder="Search contacts, deals, companies…"
+            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: 'var(--text)', padding: 0 }}
+          />
+          {loading && <div style={{ width: 14, height: 14, border: '2px solid var(--hairline)', borderTopColor: 'var(--gold)', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}/>}
+          <button onClick={closeSearch} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', padding: 2, cursor: 'pointer' }}>
+            <Icon name="x" size={14}/>
+          </button>
+        </div>
+
+        {/* Results */}
+        <div style={{ maxHeight: 420, overflow: 'auto' }}>
+          {!query.trim() && (
+            <div style={{ padding: '24px 18px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+              Type to search contacts, deals, and companies
+            </div>
+          )}
+          {query.trim() && !loading && results.length === 0 && (
+            <div style={{ padding: '24px 18px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+              No results for &ldquo;{query}&rdquo;
+            </div>
+          )}
+
+          {(['contact', 'deal', 'company'] as const).map(type => {
+            const group = results.filter(r => r.type === type)
+            if (!group.length) return null
+            const labels = { contact: 'Contacts', deal: 'Deals', company: 'Companies' }
+            return (
+              <div key={type}>
+                <div style={{ padding: '8px 18px 4px', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  {labels[type]}
+                </div>
+                {group.map(r => (
+                  <ResultRow
+                    key={r.id}
+                    result={r}
+                    active={cursor === results.indexOf(r)}
+                    onClick={() => navigate(r)}
+                    onMouseEnter={() => setCursor(results.indexOf(r))}
+                  />
+                ))}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '8px 18px', borderTop: '1px solid var(--hairline)', display: 'flex', gap: 16, fontSize: 10, color: 'var(--text-muted)' }}>
+          <span>↑↓ navigate</span>
+          <span>↵ open</span>
+          <span>Esc close</span>
+        </div>
+      </div>
+    </div>
+  ) : null
 
   return (
     <>
@@ -133,104 +222,22 @@ export default function GlobalSearch() {
         }}>⌘K</span>
       </div>
 
-      {/* Modal overlay */}
-      {open && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'grid', placeItems: 'start center', paddingTop: '15vh' }}
-          onClick={e => { if (e.target === e.currentTarget) closeSearch() }}
-        >
-          <div style={{ width: 'min(560px, calc(100vw - 32px))', background: 'var(--surface-1)', border: '1px solid var(--hairline-strong)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.8)' }} className="animate-modal-in">
-
-            {/* Search input */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderBottom: '1px solid var(--hairline)' }}>
-              <Icon name="search" size={16} color="var(--text-dim)"/>
-              <input
-                ref={inputRef}
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                onKeyDown={handleKey}
-                placeholder="Search contacts, deals, companies…"
-                style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, color: 'var(--text)', padding: 0 }}
-              />
-              {loading && <div style={{ width: 14, height: 14, border: '2px solid var(--hairline)', borderTopColor: 'var(--gold)', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }}/>}
-              <button onClick={closeSearch} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', padding: 2 }}>
-                <Icon name="x" size={14}/>
-              </button>
-            </div>
-
-            {/* Results */}
-            <div style={{ maxHeight: 380, overflow: 'auto' }}>
-              {!query.trim() && (
-                <div style={{ padding: '24px 18px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-                  Type to search contacts, deals, and companies
-                </div>
-              )}
-
-              {query.trim() && !loading && results.length === 0 && (
-                <div style={{ padding: '24px 18px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-                  No results for &ldquo;{query}&rdquo;
-                </div>
-              )}
-
-              {results.length > 0 && (
-                <>
-                  {/* Group: Contacts */}
-                  {results.some(r => r.type === 'contact') && (
-                    <div>
-                      <div style={{ padding: '8px 18px 4px', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Contacts</div>
-                      {results.filter(r => r.type === 'contact').map((r, i) => {
-                        const globalIdx = results.indexOf(r)
-                        return (
-                          <ResultRow
-                            key={r.id}
-                            result={r}
-                            active={cursor === globalIdx}
-                            onClick={() => navigate(r)}
-                            onMouseEnter={() => setCursor(globalIdx)}
-                          />
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* Group: Deals */}
-                  {results.some(r => r.type === 'deal') && (
-                    <div>
-                      <div style={{ padding: '8px 18px 4px', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Deals</div>
-                      {results.filter(r => r.type === 'deal').map((r) => {
-                        const globalIdx = results.indexOf(r)
-                        return (
-                          <ResultRow
-                            key={r.id}
-                            result={r}
-                            active={cursor === globalIdx}
-                            onClick={() => navigate(r)}
-                            onMouseEnter={() => setCursor(globalIdx)}
-                          />
-                        )
-                      })}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Footer hint */}
-            <div style={{ padding: '8px 18px', borderTop: '1px solid var(--hairline)', display: 'flex', gap: 16, fontSize: 10, color: 'var(--text-muted)' }}>
-              <span>↑↓ navigate</span>
-              <span>↵ open</span>
-              <span>Esc close</span>
-            </div>
-          </div>
-        </div>
+      {/* Portal — renders outside any stacking context */}
+      {typeof window !== 'undefined' && createPortal(
+        <>
+          {overlay}
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </>,
+        document.body
       )}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </>
   )
 }
 
-function ResultRow({ result, active, onClick, onMouseEnter }: { result: SearchResult; active: boolean; onClick: () => void; onMouseEnter: () => void }) {
+function ResultRow({ result, active, onClick, onMouseEnter }: {
+  result: SearchResult; active: boolean; onClick: () => void; onMouseEnter: () => void
+}) {
+  const iconName = result.type === 'contact' ? 'user' : result.type === 'company' ? 'building' : 'pipeline'
   return (
     <button
       onClick={onClick}
@@ -242,7 +249,7 @@ function ResultRow({ result, active, onClick, onMouseEnter }: { result: SearchRe
       }}
     >
       <div style={{ width: 30, height: 30, borderRadius: 7, background: 'var(--surface-3)', display: 'grid', placeItems: 'center', flex: '0 0 auto' }}>
-        <Icon name={result.type === 'contact' ? 'user' : 'pipeline'} size={14} color={active ? 'var(--gold)' : 'var(--text-dim)'}/>
+        <Icon name={iconName} size={14} color={active ? 'var(--gold)' : 'var(--text-dim)'}/>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{result.primary}</div>

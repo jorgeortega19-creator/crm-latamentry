@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Topbar from '@/components/shell/Topbar'
 import Icon from '@/components/ui/Icon'
 import AddCompanyModal from '@/components/companies/AddCompanyModal'
@@ -24,6 +25,15 @@ export default function CompaniesClient({ initialCompanies, initialContacts, isA
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
+  const searchParams = useSearchParams()
+
+  // Auto-select company from ?open=<id> (e.g. from global search)
+  useEffect(() => {
+    const openId = searchParams.get('open')
+    if (openId && companies.find(c => c.id === openId)) {
+      setSelected(openId)
+    }
+  }, [searchParams, companies])
 
   const filtered = useMemo(() => {
     if (!search.trim()) return companies

@@ -66,7 +66,7 @@ export default function DealDetailModal({ deal, isAdmin, onClose, onUpdated, onD
 
   // Only allow stages >= original deal stage (no backward movement), and exclude closed_lost
   const originalStageIdx = STAGES.findIndex(s => s.id === deal.stage)
-  const allowedStages = STAGES.filter((s, idx) => idx >= originalStageIdx && s.id !== 'closed_lost')
+  const allowedStages = STAGES.filter((s, idx) => (idx === originalStageIdx || idx === originalStageIdx + 1) && s.id !== 'closed_lost')
 
   const save = async () => {
     setSaving(true)

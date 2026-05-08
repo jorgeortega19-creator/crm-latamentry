@@ -38,7 +38,8 @@ function isBlockedMove(fromStage: string, toStage: string): boolean {
   if (toStage === 'closed_lost') return true
   const fromIdx = STAGES.findIndex(s => s.id === fromStage)
   const toIdx = STAGES.findIndex(s => s.id === toStage)
-  return toIdx < fromIdx
+  // Block backward moves and skipping more than one stage forward
+  return toIdx < fromIdx || toIdx > fromIdx + 1
 }
 
 export default function PipelineClient({ initialDeals, isAdmin, userId }: Props) {

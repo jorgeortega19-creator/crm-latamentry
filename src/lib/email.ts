@@ -170,6 +170,55 @@ export function welcomeEmailHtml(name: string, email: string, tempPassword: stri
 </div>`
 }
 
+export const CONTACT_RECIPIENTS = [
+  'hello@latam-entry.com',
+  'jortega@latam-entry.com',
+  'sreejith@latam-entry.com',
+  'rtijerino@latam-entry.com',
+]
+
+export function webInquiryNotificationHtml(data: {
+  name: string; email: string; company: string; interest: string; message: string
+}) {
+  return `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#111;color:#f5f5f5;border-radius:12px;overflow:hidden;">
+  <div style="background:#E8461A;padding:20px 28px;">
+    <h2 style="margin:0;color:#fff;font-size:18px;">New Web Inquiry — Latam Entry</h2>
+  </div>
+  <div style="padding:24px 28px;">
+    <p style="margin:0 0 20px;color:#ccc;">A new inquiry was submitted through the website contact form.</p>
+    <table style="width:100%;border-collapse:collapse;">
+      ${row('Name', data.name)}
+      ${row('Email', data.email)}
+      ${row('Company', data.company)}
+      ${data.interest ? row('Interest', data.interest) : ''}
+      ${data.message ? row('Message', data.message) : ''}
+    </table>
+    <div style="margin-top:24px;">
+      <a href="${CRM_URL}/pipeline" style="display:inline-block;background:#FAC51C;color:#080808;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">View in Pipeline →</a>
+    </div>
+  </div>
+</div>`
+}
+
+export function webInquiryAutoReplyHtml(name: string) {
+  return `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0D1B3E;color:#f5f5f5;border-radius:12px;overflow:hidden;">
+  <div style="background:#E8461A;padding:20px 28px;">
+    <h2 style="margin:0;color:#fff;font-size:18px;">Thank you for contacting Latam Entry</h2>
+  </div>
+  <div style="padding:24px 28px;">
+    <p style="margin:0 0 16px;color:#ccc;">Hi ${name},</p>
+    <p style="margin:0 0 16px;color:#ccc;">Thank you for reaching out to Latam Entry. We have received your message and one of our executives will contact you within <strong style="color:#fff;">24 hours</strong> to discuss your LATAM expansion strategy.</p>
+    <p style="margin:0 0 24px;color:#ccc;">In the meantime, feel free to explore our services at <a href="https://latam-entry.com" style="color:#E8461A;text-decoration:none;">latam-entry.com</a>.</p>
+    <p style="margin:0;color:#999;font-size:13px;">Best regards,<br><strong style="color:#f5f5f5;">The Latam Entry Team</strong></p>
+  </div>
+  <div style="padding:16px 28px;background:#0a1428;border-top:1px solid #1e3a6e;">
+    <p style="margin:0;font-size:11px;color:#666;">Latam Entry | Revenue Enablement for LATAM | hello@latam-entry.com</p>
+  </div>
+</div>`
+}
+
 function row(label: string, value: string) {
   return `<tr>
     <td style="padding:8px 0;color:#999;font-size:13px;width:140px;">${label}</td>

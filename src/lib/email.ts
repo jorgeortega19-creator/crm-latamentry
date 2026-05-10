@@ -174,7 +174,6 @@ export const CONTACT_RECIPIENTS = [
   'hello@latam-entry.com',
   'jorge@latam-entry.com',
   'sreejith@latam-entry.com',
-  'rtijerino@latam-entry.com',
 ]
 
 export function webInquiryNotificationHtml(data: {

@@ -173,7 +173,6 @@ export function welcomeEmailHtml(name: string, email: string, tempPassword: stri
 export const CONTACT_RECIPIENTS = [
   'hello@latam-entry.com',
   'jorge@latam-entry.com',
-  'sreejith@latam-entry.com',
 ]
 
 export function webInquiryNotificationHtml(data: {

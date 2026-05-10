@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail, welcomeEmailHtml } from '@/lib/email'
 
 const ALLOWED_DOMAIN = '@latam-entry.com'
-const SUPER_ADMIN_EMAIL = 'jortega@latam-entry.com'
+const SUPER_ADMIN_EMAIL = 'jorge@latam-entry.com'
 
 async function requireAdmin() {
   const supabase = await createServerClient()

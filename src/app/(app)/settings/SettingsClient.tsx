@@ -18,7 +18,7 @@ interface UserRow {
 
 interface Props { profile: Profile | null }
 
-const SUPER_ADMIN_EMAIL = 'jortega@latam-entry.com'
+const SUPER_ADMIN_EMAIL = 'jorge@latam-entry.com'
 
 export default function SettingsClient({ profile }: Props) {
   const router = useRouter()

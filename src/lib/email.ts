@@ -1,4 +1,4 @@
-const ADMIN_EMAIL = 'jortega@latam-entry.com'
+const ADMIN_EMAIL = 'jorge@latam-entry.com'
 const FROM = 'Latam Entry CRM <noreply@latam-entry.com>'
 const CRM_URL = 'https://crm.latam-entry.com'
 
@@ -172,7 +172,7 @@ export function welcomeEmailHtml(name: string, email: string, tempPassword: stri
 
 export const CONTACT_RECIPIENTS = [
   'hello@latam-entry.com',
-  'jortega@latam-entry.com',
+  'jorge@latam-entry.com',
   'sreejith@latam-entry.com',
   'rtijerino@latam-entry.com',
 ]

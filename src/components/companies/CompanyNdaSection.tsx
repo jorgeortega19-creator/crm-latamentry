@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Icon from '@/components/ui/Icon'
+import DatePicker from '@/components/ui/DatePicker'
 import { getCountry } from '@/lib/constants'
 import type { Company, CompanyNda } from '@/lib/types'
 
@@ -13,7 +14,6 @@ const LE_DEFAULTS = {
   REP_NAME: 'Jorge Ortega',
   LE_REPRESENTATIVE_TITLE: 'Managing Partner',
   REP_EMAIL: 'jorge@latam-entry.com',
-  LE_SIGNATURE_DATE: new Date().toISOString().split('T')[0],
 }
 
 const BUCKET = 'company-ndas'
@@ -53,6 +53,7 @@ export default function CompanyNdaSection({ company }: Props) {
 
   const openForm = () => {
     const country = getCountry(company.country)
+    const today = new Date().toISOString().split('T')[0]
     setNdaVars({
       ...LE_DEFAULTS,
       CLIENT_LEGAL_NAME: company.name,
@@ -61,8 +62,8 @@ export default function CompanyNdaSection({ company }: Props) {
       CLIENT_SIGNATORY_NAME: '',
       CLIENT_SIGNATORY_TITLE: '',
       CLIENT_SIGNATORY_EMAIL: '',
-      CLIENT_SIGNATURE_DATE: '',
-      EFFECTIVE_DATE: new Date().toISOString().split('T')[0],
+      SIGNATURE_DATE: today,
+      EFFECTIVE_DATE: today,
     })
     setShowForm(true)
   }
@@ -70,10 +71,15 @@ export default function CompanyNdaSection({ company }: Props) {
   const generateAndDownload = async () => {
     setGenerating(true)
     try {
+      const renderVars = {
+        ...ndaVars,
+        LE_SIGNATURE_DATE: ndaVars.SIGNATURE_DATE || '',
+        CLIENT_SIGNATURE_DATE: ndaVars.SIGNATURE_DATE || '',
+      }
       const res = await fetch('/api/nda/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ndaVars),
+        body: JSON.stringify(renderVars),
       })
       if (!res.ok) throw new Error('Generation failed')
       const blob = await res.blob()
@@ -207,7 +213,6 @@ export default function CompanyNdaSection({ company }: Props) {
                   ['REP_NAME', 'Representative'],
                   ['LE_REPRESENTATIVE_TITLE', 'Title'],
                   ['REP_EMAIL', 'Email'],
-                  ['LE_SIGNATURE_DATE', 'Signature date'],
                 ] as [string, string][]).map(([key, label]) => (
                   <NdaField key={key} label={label} value={ndaVars[key] || ''} onChange={v => setNdaVars(p => ({ ...p, [key]: v }))}/>
                 ))}
@@ -223,12 +228,22 @@ export default function CompanyNdaSection({ company }: Props) {
                   ['CLIENT_SIGNATORY_NAME', 'Signatory'],
                   ['CLIENT_SIGNATORY_TITLE', 'Title'],
                   ['CLIENT_SIGNATORY_EMAIL', 'Email'],
-                  ['CLIENT_SIGNATURE_DATE', 'Signature date'],
-                  ['EFFECTIVE_DATE', 'Effective date'],
                 ] as [string, string][]).map(([key, label]) => (
                   <NdaField key={key} label={label} value={ndaVars[key] || ''} onChange={v => setNdaVars(p => ({ ...p, [key]: v }))}/>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Dates — shared row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--hairline)' }}>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 500 }}>Signature date</div>
+              <DatePicker value={ndaVars.SIGNATURE_DATE || ''} onChange={v => setNdaVars(p => ({ ...p, SIGNATURE_DATE: v }))} placeholder="Select date"/>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 500 }}>Effective date</div>
+              <DatePicker value={ndaVars.EFFECTIVE_DATE || ''} onChange={v => setNdaVars(p => ({ ...p, EFFECTIVE_DATE: v }))} placeholder="Select date"/>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>

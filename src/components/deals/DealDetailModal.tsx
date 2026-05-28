@@ -4,18 +4,9 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Icon from '@/components/ui/Icon'
 import DatePicker from '@/components/ui/DatePicker'
+import CompanyNdaSection from '@/components/companies/CompanyNdaSection'
 import { COUNTRIES, SERVICE_PACKAGES, STAGES, TEAM, getPkg, getStage, getCountry, fmtCurrency, fmtDate } from '@/lib/constants'
-import type { Deal, Activity, DealStage } from '@/lib/types'
-
-const LE_DEFAULTS = {
-  LE_LEGAL_NAME: 'Latam Entry S.A. de C.V.',
-  LE_ADDRESS: 'Av. Insurgentes Sur 1602, Crédito Constructor, 03940 Ciudad de México',
-  LE_COUNTRY_OF_INCORPORATION: 'Mexico',
-  REP_NAME: 'Jorge Ortega',
-  LE_REPRESENTATIVE_TITLE: 'Managing Partner',
-  REP_EMAIL: 'jorge@latam-entry.com',
-  LE_SIGNATURE_DATE: new Date().toISOString().split('T')[0],
-}
+import type { Deal, Activity, DealStage, Company } from '@/lib/types'
 
 interface Props {
   deal: Deal
@@ -41,51 +32,12 @@ export default function DealDetailModal({ deal, isAdmin, onClose, onUpdated, onD
   const [markingLost, setMarkingLost] = useState(false)
   const [lostError, setLostError] = useState('')
 
-  // NDA generation state
-  const [showNdaForm, setShowNdaForm] = useState(false)
-  const [ndaVars, setNdaVars] = useState<Record<string, string>>({})
-  const [generatingNda, setGeneratingNda] = useState(false)
+  // NDA panel
+  const [showNdaPanel, setShowNdaPanel] = useState(false)
+  const [dealCompany, setDealCompany] = useState<Company | null>(null)
 
   // Won NDA gate
   const [wonError, setWonError] = useState('')
-
-  const openNdaForm = () => {
-    const country = getCountry(deal.country)
-    setNdaVars({
-      ...LE_DEFAULTS,
-      CLIENT_LEGAL_NAME: deal.company_name,
-      CLIENT_ADDRESS: '',
-      CLIENT_COUNTRY: country?.name || deal.country,
-      CLIENT_SIGNATORY_NAME: deal.contact_name || '',
-      CLIENT_SIGNATORY_TITLE: '',
-      CLIENT_SIGNATORY_EMAIL: '',
-      CLIENT_SIGNATURE_DATE: '',
-      EFFECTIVE_DATE: new Date().toISOString().split('T')[0],
-    })
-    setShowNdaForm(true)
-  }
-
-  const downloadNda = async () => {
-    setGeneratingNda(true)
-    try {
-      const res = await fetch('/api/nda/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ndaVars),
-      })
-      if (!res.ok) throw new Error('Generation failed')
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `NDA_${(ndaVars.CLIENT_LEGAL_NAME || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_')}.docx`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch {
-      alert('Could not generate NDA. Please try again.')
-    }
-    setGeneratingNda(false)
-  }
 
   const [form, setForm] = useState({
     name: deal.name,
@@ -107,7 +59,11 @@ export default function DealDetailModal({ deal, isAdmin, onClose, onUpdated, onD
       .eq('deal_id', deal.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => data && setActivities(data as Activity[]))
-  }, [deal.id, supabase])
+    supabase.from('companies').select('*')
+      .eq('name', deal.company_name)
+      .maybeSingle()
+      .then(({ data }) => data && setDealCompany(data as Company))
+  }, [deal.id, deal.company_name, supabase])
 
   const isOwner = !!currentUserId && (deal.owner_id === currentUserId)
   const canEdit = isOwner || isAdmin
@@ -222,6 +178,7 @@ export default function DealDetailModal({ deal, isAdmin, onClose, onUpdated, onD
   const country = getCountry(deal.country)
 
   return (
+    <>
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 100, padding: '16px' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
@@ -328,64 +285,19 @@ export default function DealDetailModal({ deal, isAdmin, onClose, onUpdated, onD
 
             {/* NDA section */}
             <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showNdaForm ? 10 : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', letterSpacing: '0.04em' }}>NDA</span>
-                {!showNdaForm && (
+                {dealCompany ? (
                   <button
-                    onClick={openNdaForm}
+                    onClick={() => setShowNdaPanel(true)}
                     style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', fontSize: 11, fontWeight: 600, border: '1px solid var(--hairline)', borderRadius: 6, background: 'var(--surface-2)', color: 'var(--text)', cursor: 'pointer' }}
                   >
-                    <Icon name="file" size={11}/>Generate NDA
+                    <Icon name="file" size={11}/>Manage NDA
                   </button>
+                ) : (
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Add company first</span>
                 )}
               </div>
-
-              {showNdaForm && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.06em', marginBottom: 2 }}>LATAM ENTRY</div>
-                  {([
-                    ['LE_LEGAL_NAME', 'Legal name'],
-                    ['LE_ADDRESS', 'Address'],
-                    ['LE_COUNTRY_OF_INCORPORATION', 'Country of incorporation'],
-                    ['REP_NAME', 'Representative name'],
-                    ['LE_REPRESENTATIVE_TITLE', 'Representative title'],
-                    ['REP_EMAIL', 'Representative email'],
-                    ['LE_SIGNATURE_DATE', 'LE signature date'],
-                  ] as [string, string][]).map(([key, label]) => (
-                    <NdaField key={key} label={label} value={ndaVars[key] || ''} onChange={v => setNdaVars(p => ({ ...p, [key]: v }))}/>
-                  ))}
-
-                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.06em', marginTop: 4, marginBottom: 2 }}>CLIENT</div>
-                  {([
-                    ['CLIENT_LEGAL_NAME', 'Legal name'],
-                    ['CLIENT_ADDRESS', 'Address'],
-                    ['CLIENT_COUNTRY', 'Country'],
-                    ['CLIENT_SIGNATORY_NAME', 'Signatory name'],
-                    ['CLIENT_SIGNATORY_TITLE', 'Signatory title'],
-                    ['CLIENT_SIGNATORY_EMAIL', 'Signatory email'],
-                    ['CLIENT_SIGNATURE_DATE', 'Client signature date'],
-                    ['EFFECTIVE_DATE', 'Effective date'],
-                  ] as [string, string][]).map(([key, label]) => (
-                    <NdaField key={key} label={label} value={ndaVars[key] || ''} onChange={v => setNdaVars(p => ({ ...p, [key]: v }))}/>
-                  ))}
-
-                  <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                    <button
-                      onClick={() => setShowNdaForm(false)}
-                      style={{ flex: 1, padding: '6px', fontSize: 11, border: '1px solid var(--hairline)', borderRadius: 6, background: 'transparent', color: 'var(--text)', cursor: 'pointer' }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={downloadNda}
-                      disabled={generatingNda}
-                      style={{ flex: 2, padding: '6px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 6, background: 'var(--gold)', color: '#080808', opacity: generatingNda ? 0.6 : 1, cursor: generatingNda ? 'default' : 'pointer' }}
-                    >
-                      {generatingNda ? 'Generating…' : '↓ Download Word'}
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Action buttons */}
@@ -449,6 +361,28 @@ export default function DealDetailModal({ deal, isAdmin, onClose, onUpdated, onD
         </div>
       </div>
     </div>
+
+    {/* NDA overlay */}
+    {showNdaPanel && dealCompany && (
+      <div
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'grid', placeItems: 'center', padding: 16 }}
+        onClick={e => { if (e.target === e.currentTarget) setShowNdaPanel(false) }}
+      >
+        <div style={{ width: 'min(860px, 100%)', maxHeight: '90vh', overflow: 'auto', background: 'var(--surface-1)', border: '1px solid var(--hairline-strong)', borderRadius: 14, padding: '20px 24px', boxShadow: '0 30px 80px rgba(0,0,0,0.7)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>NDA · {dealCompany.name}</div>
+            <button
+              onClick={() => setShowNdaPanel(false)}
+              style={{ width: 32, height: 32, borderRadius: 8, display: 'grid', placeItems: 'center', border: '1px solid var(--hairline)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}
+            >
+              <Icon name="x" size={16}/>
+            </button>
+          </div>
+          <CompanyNdaSection company={dealCompany}/>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
 
@@ -579,15 +513,3 @@ const iStyle: React.CSSProperties = {
   fontSize: 13, color: 'var(--text)', outline: 'none',
 }
 
-function NdaField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 500 }}>{label}</div>
-      <input
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--hairline)', borderRadius: 5, padding: '5px 8px', fontSize: 11, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
-      />
-    </div>
-  )
-}

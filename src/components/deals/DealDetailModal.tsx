@@ -7,6 +7,16 @@ import DatePicker from '@/components/ui/DatePicker'
 import { COUNTRIES, SERVICE_PACKAGES, STAGES, TEAM, getPkg, getStage, getCountry, fmtCurrency, fmtDate } from '@/lib/constants'
 import type { Deal, Activity, DealStage } from '@/lib/types'
 
+const LE_DEFAULTS = {
+  LE_LEGAL_NAME: 'Latam Entry S.A. de C.V.',
+  LE_ADDRESS: 'Av. Insurgentes Sur 1602, Crédito Constructor, 03940 Ciudad de México',
+  LE_COUNTRY_OF_INCORPORATION: 'Mexico',
+  REP_NAME: 'Jorge Ortega',
+  LE_REPRESENTATIVE_TITLE: 'Managing Partner',
+  REP_EMAIL: 'jorge@latam-entry.com',
+  LE_SIGNATURE_DATE: new Date().toISOString().split('T')[0],
+}
+
 interface Props {
   deal: Deal
   isAdmin: boolean
@@ -30,6 +40,52 @@ export default function DealDetailModal({ deal, isAdmin, onClose, onUpdated, onD
   const [lostReason, setLostReason] = useState('')
   const [markingLost, setMarkingLost] = useState(false)
   const [lostError, setLostError] = useState('')
+
+  // NDA generation state
+  const [showNdaForm, setShowNdaForm] = useState(false)
+  const [ndaVars, setNdaVars] = useState<Record<string, string>>({})
+  const [generatingNda, setGeneratingNda] = useState(false)
+
+  // Won NDA gate
+  const [wonError, setWonError] = useState('')
+
+  const openNdaForm = () => {
+    const country = getCountry(deal.country)
+    setNdaVars({
+      ...LE_DEFAULTS,
+      CLIENT_LEGAL_NAME: deal.company_name,
+      CLIENT_ADDRESS: '',
+      CLIENT_COUNTRY: country?.name || deal.country,
+      CLIENT_SIGNATORY_NAME: deal.contact_name || '',
+      CLIENT_SIGNATORY_TITLE: '',
+      CLIENT_SIGNATORY_EMAIL: '',
+      CLIENT_SIGNATURE_DATE: '',
+      EFFECTIVE_DATE: new Date().toISOString().split('T')[0],
+    })
+    setShowNdaForm(true)
+  }
+
+  const downloadNda = async () => {
+    setGeneratingNda(true)
+    try {
+      const res = await fetch('/api/nda/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ndaVars),
+      })
+      if (!res.ok) throw new Error('Generation failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `NDA_${(ndaVars.CLIENT_LEGAL_NAME || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_')}.docx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Could not generate NDA. Please try again.')
+    }
+    setGeneratingNda(false)
+  }
 
   const [form, setForm] = useState({
     name: deal.name,
@@ -69,6 +125,18 @@ export default function DealDetailModal({ deal, isAdmin, onClose, onUpdated, onD
   const allowedStages = STAGES.filter((s, idx) => (idx === originalStageIdx || idx === originalStageIdx + 1) && s.id !== 'closed_lost')
 
   const save = async () => {
+    // Block Won if no signed NDA on file
+    if (form.stage === 'closed_won' && deal.stage !== 'closed_won') {
+      const { data: co } = await supabase.from('companies').select('id').eq('name', deal.company_name).maybeSingle()
+      if (co?.id) {
+        const { data: ndas } = await supabase.from('company_ndas').select('id').eq('company_id', co.id).eq('type', 'signed').limit(1)
+        if (!ndas || ndas.length === 0) {
+          setWonError(`No signed NDA for ${deal.company_name}. Go to Companies → ${deal.company_name} → NDA and upload the signed document first.`)
+          return
+        }
+      }
+    }
+    setWonError('')
     setSaving(true)
     const stageChanged = form.stage !== deal.stage
     const oldStage = deal.stage
@@ -221,11 +289,18 @@ export default function DealDetailModal({ deal, isAdmin, onClose, onUpdated, onD
             </div>
 
             {editing && (
-              <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                <button onClick={() => setEditing(false)} style={{ flex: 1, padding: '9px', fontSize: 13, fontWeight: 500, border: '1px solid var(--hairline)', borderRadius: 8, background: 'transparent', color: 'var(--text)' }}>Cancel</button>
-                <button onClick={save} disabled={saving} style={{ flex: 2, padding: '9px', fontSize: 13, fontWeight: 600, borderRadius: 8, background: 'var(--gold)', color: '#080808', border: 'none', opacity: saving ? 0.6 : 1 }}>
-                  {saving ? 'Saving…' : 'Save changes'}
-                </button>
+              <div style={{ marginTop: 16 }}>
+                {wonError && (
+                  <div style={{ background: 'rgba(255,77,79,0.08)', border: '1px solid rgba(255,77,79,0.3)', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: 'var(--negative)', marginBottom: 10, lineHeight: 1.5 }}>
+                    🔒 {wonError}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => { setEditing(false); setWonError('') }} style={{ flex: 1, padding: '9px', fontSize: 13, fontWeight: 500, border: '1px solid var(--hairline)', borderRadius: 8, background: 'transparent', color: 'var(--text)' }}>Cancel</button>
+                  <button onClick={save} disabled={saving} style={{ flex: 2, padding: '9px', fontSize: 13, fontWeight: 600, borderRadius: 8, background: 'var(--gold)', color: '#080808', border: 'none', opacity: saving ? 0.6 : 1 }}>
+                    {saving ? 'Saving…' : 'Save changes'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -250,6 +325,68 @@ export default function DealDetailModal({ deal, isAdmin, onClose, onUpdated, onD
                 author={a.author_name}
               />
             ))}
+
+            {/* NDA section */}
+            <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showNdaForm ? 10 : 0 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', letterSpacing: '0.04em' }}>NDA</span>
+                {!showNdaForm && (
+                  <button
+                    onClick={openNdaForm}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', fontSize: 11, fontWeight: 600, border: '1px solid var(--hairline)', borderRadius: 6, background: 'var(--surface-2)', color: 'var(--text)', cursor: 'pointer' }}
+                  >
+                    <Icon name="file" size={11}/>Generate NDA
+                  </button>
+                )}
+              </div>
+
+              {showNdaForm && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.06em', marginBottom: 2 }}>LATAM ENTRY</div>
+                  {([
+                    ['LE_LEGAL_NAME', 'Legal name'],
+                    ['LE_ADDRESS', 'Address'],
+                    ['LE_COUNTRY_OF_INCORPORATION', 'Country of incorporation'],
+                    ['REP_NAME', 'Representative name'],
+                    ['LE_REPRESENTATIVE_TITLE', 'Representative title'],
+                    ['REP_EMAIL', 'Representative email'],
+                    ['LE_SIGNATURE_DATE', 'LE signature date'],
+                  ] as [string, string][]).map(([key, label]) => (
+                    <NdaField key={key} label={label} value={ndaVars[key] || ''} onChange={v => setNdaVars(p => ({ ...p, [key]: v }))}/>
+                  ))}
+
+                  <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.06em', marginTop: 4, marginBottom: 2 }}>CLIENT</div>
+                  {([
+                    ['CLIENT_LEGAL_NAME', 'Legal name'],
+                    ['CLIENT_ADDRESS', 'Address'],
+                    ['CLIENT_COUNTRY', 'Country'],
+                    ['CLIENT_SIGNATORY_NAME', 'Signatory name'],
+                    ['CLIENT_SIGNATORY_TITLE', 'Signatory title'],
+                    ['CLIENT_SIGNATORY_EMAIL', 'Signatory email'],
+                    ['CLIENT_SIGNATURE_DATE', 'Client signature date'],
+                    ['EFFECTIVE_DATE', 'Effective date'],
+                  ] as [string, string][]).map(([key, label]) => (
+                    <NdaField key={key} label={label} value={ndaVars[key] || ''} onChange={v => setNdaVars(p => ({ ...p, [key]: v }))}/>
+                  ))}
+
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                    <button
+                      onClick={() => setShowNdaForm(false)}
+                      style={{ flex: 1, padding: '6px', fontSize: 11, border: '1px solid var(--hairline)', borderRadius: 6, background: 'transparent', color: 'var(--text)', cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={downloadNda}
+                      disabled={generatingNda}
+                      style={{ flex: 2, padding: '6px', fontSize: 11, fontWeight: 600, border: 'none', borderRadius: 6, background: 'var(--gold)', color: '#080808', opacity: generatingNda ? 0.6 : 1, cursor: generatingNda ? 'default' : 'pointer' }}
+                    >
+                      {generatingNda ? 'Generating…' : '↓ Download Word'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Action buttons */}
             <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--hairline)', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -440,4 +577,17 @@ const iStyle: React.CSSProperties = {
   border: '1px solid var(--hairline)',
   borderRadius: 8, padding: '9px 11px',
   fontSize: 13, color: 'var(--text)', outline: 'none',
+}
+
+function NdaField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 500 }}>{label}</div>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--hairline)', borderRadius: 5, padding: '5px 8px', fontSize: 11, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
+      />
+    </div>
+  )
 }

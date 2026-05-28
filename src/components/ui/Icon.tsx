@@ -7,7 +7,7 @@ import {
   Target, Award, ChevronDown, ChevronUp, Filter, Download, Trash2,
   Edit2, Eye, Check, AlertCircle, Clock, MessageSquare, Paperclip,
   CheckSquare, FileText, Send, Star, Grip, Move, ArrowUpRight,
-  LogOut, User, Shield, Layers, Zap, Activity, Package, MapPin, Menu, Key,
+  LogOut, User, Shield, Layers, Zap, Activity, Package, MapPin, Menu, Key, Upload,
 } from 'lucide-react'
 
 const icons = {
@@ -63,6 +63,7 @@ const icons = {
   'map-pin': MapPin,
   menu: Menu,
   key: Key,
+  upload: Upload,
 } as const
 
 type IconName = keyof typeof icons

@@ -101,3 +101,14 @@ export interface Country {
   name: string
   flag: string
 }
+
+export interface CompanyNda {
+  id: string
+  company_id: string
+  company_name: string
+  type: 'draft' | 'signed'
+  file_name: string
+  storage_path: string | null
+  created_by: string | null
+  created_at: string
+}

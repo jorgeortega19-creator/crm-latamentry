@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Topbar from '@/components/shell/Topbar'
 import Icon from '@/components/ui/Icon'
 import AddCompanyModal from '@/components/companies/AddCompanyModal'
+import CompanyNdaSection from '@/components/companies/CompanyNdaSection'
 import { getCountry } from '@/lib/constants'
 import { exportCompanies } from '@/lib/export'
 import type { Company, Contact } from '@/lib/types'
@@ -183,6 +184,9 @@ export default function CompaniesClient({ initialCompanies, initialContacts, isA
                   </div>
                 ))}
               </div>
+
+              {/* NDA documents */}
+              <CompanyNdaSection company={selectedCompany}/>
             </div>
           )}
         </div>

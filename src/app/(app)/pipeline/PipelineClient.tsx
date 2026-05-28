@@ -41,7 +41,7 @@ function customCollision(args: Parameters<typeof pointerWithin>[0]) {
 }
 
 function isBlockedMove(fromStage: string, toStage: string): boolean {
-  if (toStage === 'closed_lost') return true
+  if (toStage === 'closed_lost') return false  // always allowed from any stage
   const fromIdx = STAGES.findIndex(s => s.id === fromStage)
   const toIdx = STAGES.findIndex(s => s.id === toStage)
   return toIdx < fromIdx || toIdx > fromIdx + 1
@@ -61,6 +61,7 @@ export default function PipelineClient({ initialDeals, isAdmin, userId, newlyOve
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null)
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null)
   const [confirming, setConfirming] = useState(false)
+  const [ndaError, setNdaError] = useState('')
   const supabase = createClient()
   const searchParams = useSearchParams()
 
@@ -172,16 +173,33 @@ export default function PipelineClient({ initialDeals, isAdmin, userId, newlyOve
     setPendingMove({ dealId, dealName: deal.name, originalStage, newStage })
   }, [])
 
-  const confirmMove = useCallback(async () => {
+  const confirmMove = useCallback(async (lostReason?: string) => {
     if (!pendingMove) return
     const { dealId, originalStage, newStage } = pendingMove
     const deal = dealsRef.current.find(d => d.id === dealId)
     if (!deal) { setPendingMove(null); return }
 
+    // Gate: closed_won requires a signed NDA on file
+    if (newStage === 'closed_won') {
+      const { data: co } = await supabase.from('companies').select('id').eq('name', deal.company_name).maybeSingle()
+      if (co?.id) {
+        const { data: ndas } = await supabase.from('company_ndas').select('id').eq('company_id', co.id).eq('type', 'signed').limit(1)
+        if (!ndas || ndas.length === 0) {
+          setNdaError(`No signed NDA for ${deal.company_name}. Go to Companies → ${deal.company_name} → NDA and upload the signed document first.`)
+          setDeals(prev => prev.map(d =>
+            d.id === dealId ? { ...d, stage: originalStage, probability: getStage(originalStage)?.probability ?? d.probability } : d
+          ))
+          return
+        }
+      }
+    }
+    setNdaError('')
+
     setConfirming(true)
+    const probability = newStage === 'closed_lost' ? 0 : (getStage(newStage)?.probability ?? deal.probability)
     const { error } = await supabase
       .from('deals')
-      .update({ stage: newStage, probability: getStage(newStage)?.probability ?? deal.probability })
+      .update({ stage: newStage, probability, updated_at: new Date().toISOString() })
       .eq('id', dealId)
     setConfirming(false)
 
@@ -190,6 +208,9 @@ export default function PipelineClient({ initialDeals, isAdmin, userId, newlyOve
         d.id === dealId ? { ...d, stage: originalStage, probability: getStage(originalStage)?.probability ?? d.probability } : d
       ))
     } else {
+      if (newStage === 'closed_lost' && lostReason?.trim()) {
+        supabase.from('activities').insert({ type: 'note', body: `Reason of Lost: ${lostReason}`, deal_id: dealId })
+      }
       fetch('/api/email/deal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -205,6 +226,7 @@ export default function PipelineClient({ initialDeals, isAdmin, userId, newlyOve
     setDeals(prev => prev.map(d =>
       d.id === dealId ? { ...d, stage: originalStage, probability: getStage(originalStage)?.probability ?? d.probability } : d
     ))
+    setNdaError('')
     setPendingMove(null)
   }, [pendingMove])
 
@@ -283,6 +305,7 @@ export default function PipelineClient({ initialDeals, isAdmin, userId, newlyOve
         <ConfirmStageModal
           move={pendingMove}
           confirming={confirming}
+          ndaError={ndaError}
           onConfirm={confirmMove}
           onCancel={cancelMove}
         />
@@ -313,14 +336,25 @@ export default function PipelineClient({ initialDeals, isAdmin, userId, newlyOve
 
 // ── Confirm modal ─────────────────────────────────────────────────────────────
 
-function ConfirmStageModal({ move, confirming, onConfirm, onCancel }: {
+function ConfirmStageModal({ move, confirming, ndaError, onConfirm, onCancel }: {
   move: PendingMove
   confirming: boolean
-  onConfirm: () => void
+  ndaError: string
+  onConfirm: (lostReason?: string) => void
   onCancel: () => void
 }) {
+  const [lostReason, setLostReason] = useState('')
+  const [lostErr, setLostErr] = useState('')
   const fromStage = getStage(move.originalStage)
   const toStage = getStage(move.newStage)
+  const isLost = move.newStage === 'closed_lost'
+  const isWon = move.newStage === 'closed_won'
+
+  const handleConfirm = () => {
+    if (isLost && !lostReason.trim()) { setLostErr('Please provide a reason'); return }
+    setLostErr('')
+    onConfirm(isLost ? lostReason : undefined)
+  }
 
   return (
     <div style={{
@@ -336,20 +370,17 @@ function ConfirmStageModal({ move, confirming, onConfirm, onCancel }: {
       }}>
         {/* Header */}
         <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--gold-soft)', display: 'grid', placeItems: 'center', flex: '0 0 auto' }}>
-            <Icon name="zap" size={15} color="var(--gold)"/>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: isLost ? 'rgba(255,77,79,0.1)' : 'var(--gold-soft)', display: 'grid', placeItems: 'center', flex: '0 0 auto' }}>
+            <Icon name={isLost ? 'x' : 'zap'} size={15} color={isLost ? 'var(--negative)' : 'var(--gold)'}/>
           </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Confirm Stage Advance</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{isLost ? 'Mark as Lost' : 'Confirm Stage Advance'}</div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>This action cannot be undone</div>
           </div>
         </div>
 
         {/* Body */}
         <div style={{ padding: '20px 22px' }}>
-          <div style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16 }}>
-            You are about to advance:
-          </div>
           <div style={{ background: 'var(--surface-2)', border: '1px solid var(--hairline)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>{move.dealName}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -364,10 +395,31 @@ function ConfirmStageModal({ move, confirming, onConfirm, onCancel }: {
               </div>
             </div>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Icon name="shield" size={12} color="var(--text-muted)"/>
-            Are you sure this opportunity is ready to advance?
-          </div>
+
+          {isLost && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Reason of Lost</div>
+              <textarea
+                value={lostReason}
+                onChange={e => { setLostReason(e.target.value); setLostErr('') }}
+                placeholder="Explain why this deal was lost…"
+                rows={3}
+                style={{ width: '100%', background: 'var(--surface-2)', border: `1px solid ${lostErr ? 'var(--negative)' : 'var(--hairline)'}`, borderRadius: 8, padding: '9px 11px', fontSize: 13, color: 'var(--text)', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
+              />
+              {lostErr && <div style={{ fontSize: 11, color: 'var(--negative)', marginTop: 4 }}>{lostErr}</div>}
+            </div>
+          )}
+
+          {ndaError ? (
+            <div style={{ background: 'rgba(255,77,79,0.08)', border: '1px solid rgba(255,77,79,0.3)', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: 'var(--negative)', lineHeight: 1.5 }}>
+              🔒 {ndaError}
+            </div>
+          ) : !isLost && (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon name="shield" size={12} color="var(--text-muted)"/>
+              {isWon ? 'This will close the deal as Won.' : 'Are you sure this opportunity is ready to advance?'}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -379,13 +431,15 @@ function ConfirmStageModal({ move, confirming, onConfirm, onCancel }: {
           >
             Cancel
           </button>
-          <button
-            onClick={onConfirm}
-            disabled={confirming}
-            style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, borderRadius: 8, background: 'var(--gold)', color: '#080808', border: 'none', opacity: confirming ? 0.6 : 1, cursor: 'pointer' }}
-          >
-            {confirming ? 'Moving…' : 'Confirm Move →'}
-          </button>
+          {!ndaError && (
+            <button
+              onClick={handleConfirm}
+              disabled={confirming}
+              style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, borderRadius: 8, background: isLost ? 'var(--negative)' : 'var(--gold)', color: isLost ? '#fff' : '#080808', border: 'none', opacity: confirming ? 0.6 : 1, cursor: 'pointer' }}
+            >
+              {confirming ? 'Moving…' : isLost ? 'Confirm Lost' : 'Confirm Move →'}
+            </button>
+          )}
         </div>
       </div>
     </div>

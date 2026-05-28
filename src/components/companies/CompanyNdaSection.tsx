@@ -91,14 +91,19 @@ export default function CompanyNdaSection({ company }: Props) {
       a.href = url; a.download = fileName; a.click()
       URL.revokeObjectURL(url)
 
-      // Save draft record
+      // Upload to Storage so it can be re-downloaded later
       const { data: { user } } = await supabase.auth.getUser()
+      const storagePath = `${company.id}/${Date.now()}_${fileName}`
+      const { error: uploadErr } = await supabase.storage
+        .from(BUCKET)
+        .upload(storagePath, blob, { contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', upsert: false })
+
       const { data } = await supabase.from('company_ndas').insert({
         company_id: company.id,
         company_name: company.name,
         type: 'draft',
         file_name: fileName,
-        storage_path: null,
+        storage_path: uploadErr ? null : storagePath,
         created_by: user?.id ?? null,
       }).select().single()
       if (data) setNdas(prev => [data as CompanyNda, ...prev])
@@ -284,7 +289,7 @@ export default function CompanyNdaSection({ company }: Props) {
             <NdaRow
               key={nda.id}
               nda={nda}
-              onDownload={undefined}
+              onDownload={nda.storage_path ? () => downloadSigned(nda) : undefined}
               onDelete={() => deleteNda(nda.id)}
             />
           ))}
@@ -311,7 +316,7 @@ function NdaRow({ nda, onDownload, onDelete }: { nda: CompanyNda; onDownload?: (
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, flex: '0 0 auto' }}>
-        {isSigned && onDownload && (
+        {onDownload && (
           <button
             onClick={onDownload}
             style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', fontSize: 11, fontWeight: 500, border: '1px solid var(--hairline)', borderRadius: 6, background: 'var(--surface-2)', color: 'var(--text)', cursor: 'pointer' }}

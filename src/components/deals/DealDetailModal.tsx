@@ -122,6 +122,22 @@ export default function DealDetailModal({ deal, isAdmin, onClose, onUpdated, onD
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ type: 'stage_changed', dealId: deal.id, oldStage, newStage: form.stage }),
         })
+        if (form.stage === 'closed_won') {
+          fetch('/api/internal/notify-won', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              dealId: deal.id,
+              company: deal.company_name,
+              contact: data.contact_name ?? '',
+              pkg: form.pkg,
+              tcv,
+              termMonths: parseInt(form.term_months) || 12,
+              ae: form.owner_name,
+              wonAt: new Date().toISOString().slice(0, 10),
+            }),
+          })
+        }
       }
     }
   }

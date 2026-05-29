@@ -216,6 +216,22 @@ export default function PipelineClient({ initialDeals, isAdmin, userId, newlyOve
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'stage_changed', dealId, oldStage: originalStage, newStage }),
       })
+      if (newStage === 'closed_won') {
+        fetch('/api/internal/notify-won', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dealId,
+            company: deal.company_name,
+            contact: deal.contact_name ?? '',
+            pkg: deal.pkg,
+            tcv: deal.tcv,
+            termMonths: deal.term_months,
+            ae: deal.owner_name,
+            wonAt: new Date().toISOString().slice(0, 10),
+          }),
+        })
+      }
     }
     setPendingMove(null)
   }, [pendingMove, supabase])

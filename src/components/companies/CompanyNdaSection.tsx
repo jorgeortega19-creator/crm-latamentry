@@ -146,7 +146,15 @@ export default function CompanyNdaSection({ company }: Props) {
     const { data } = await supabase.storage
       .from(BUCKET)
       .createSignedUrl(nda.storage_path, 60)
-    if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+    if (data?.signedUrl) {
+      const a = document.createElement('a')
+      a.href = data.signedUrl
+      a.download = nda.file_name || 'NDA'
+      a.rel = 'noopener noreferrer'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    }
   }
 
   const deleteNda = async (id: string) => {

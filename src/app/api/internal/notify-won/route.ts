@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   const erpKey = process.env.ERP_INTERNAL_KEY ?? ''
 
   try {
-    await fetch(`${erpUrl}/api/internal/onboarding`, {
+    const res = await fetch(`${erpUrl}/api/internal/onboarding`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -15,8 +15,14 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify(body),
     })
-  } catch {
-    // Non-blocking — don't fail the CRM flow if ERP is unreachable
+    if (!res.ok) {
+      const text = await res.text()
+      console.error('[notify-won] ERP returned', res.status, text)
+    } else {
+      console.log('[notify-won] ERP onboarding created OK for deal', body.dealId)
+    }
+  } catch (err) {
+    console.error('[notify-won] fetch error:', err)
   }
 
   return NextResponse.json({ ok: true })

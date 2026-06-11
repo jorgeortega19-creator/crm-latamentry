@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendEmail, dealCreatedHtml, stageChangedHtml, overdueEmailHtml, ADMIN_EMAIL } from '@/lib/email'
+import { sendEmail, dealCreatedHtml, stageChangedHtml, overdueEmailHtml, ADMIN_EMAIL, ADDITIONAL_RECIPIENTS } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
   const supabase = await createServerClient()
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     ownerEmail = profile?.email ?? null
   }
 
-  const recipients = [...new Set([ownerEmail, ADMIN_EMAIL].filter(Boolean))] as string[]
+  const recipients = [...new Set([ownerEmail, ADMIN_EMAIL, ...ADDITIONAL_RECIPIENTS].filter(Boolean))] as string[]
 
   if (type === 'created') {
     await sendEmail({

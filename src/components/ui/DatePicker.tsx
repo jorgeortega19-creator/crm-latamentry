@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   format, startOfMonth, endOfMonth,
   startOfWeek, endOfWeek,
@@ -21,13 +22,19 @@ interface Props {
 export default function DatePicker({ value, onChange, placeholder = 'Select date', hasError, style }: Props) {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<Date>(() => value ? parseISO(value) : new Date())
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 })
   const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const selected = value ? parseISO(value) : null
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      const insideWrapper = ref.current?.contains(target)
+      const insideDropdown = dropdownRef.current?.contains(target)
+      if (!insideWrapper && !insideDropdown) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -37,6 +44,14 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
     if (value) setView(parseISO(value))
   }, [value])
 
+  const handleOpen = () => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left })
+    }
+    setOpen(v => !v)
+  }
+
   const days = eachDayOfInterval({
     start: startOfWeek(startOfMonth(view), { weekStartsOn: 0 }),
     end: endOfWeek(endOfMonth(view), { weekStartsOn: 0 }),
@@ -45,8 +60,9 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
   return (
     <div ref={ref} style={{ position: 'relative', ...style }}>
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen(v => !v)}
+        onClick={handleOpen}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', gap: 8,
           background: 'var(--surface-2)',
@@ -69,9 +85,9 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
         )}
       </button>
 
-      {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 300,
+      {open && createPortal(
+        <div ref={dropdownRef} style={{
+          position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, zIndex: 9999,
           background: 'var(--surface-1)', border: '1px solid var(--hairline-strong)',
           borderRadius: 10, padding: '12px',
           boxShadow: '0 20px 60px rgba(0,0,0,0.75)',
@@ -123,7 +139,8 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
               )
             })}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

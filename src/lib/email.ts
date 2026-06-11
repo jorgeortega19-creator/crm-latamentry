@@ -1,4 +1,5 @@
 const ADMIN_EMAIL = 'jorge@latam-entry.com'
+export const ADDITIONAL_RECIPIENTS = ['raczel159@gmail.com', 'sreejith@latam-entry.com']
 const FROM = 'Latam Entry CRM <noreply@latam-entry.com>'
 const CRM_URL = 'https://crm.latam-entry.com'
 

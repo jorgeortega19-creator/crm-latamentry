@@ -103,7 +103,7 @@ export default function DealDetailModal({ deal, isAdmin, onClose, onUpdated, onD
       country: form.country,
       pkg: form.pkg,
       tcv,
-      term_months: parseInt(form.term_months) || 12,
+      term_months: Math.max(1, parseInt(form.term_months) || 12),
       fee_pct: feePct,
       fee_amount: feeAmt,
       stage: form.stage as DealStage,

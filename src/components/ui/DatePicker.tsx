@@ -22,7 +22,7 @@ interface Props {
 export default function DatePicker({ value, onChange, placeholder = 'Select date', hasError, style }: Props) {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<Date>(() => value ? parseISO(value) : new Date())
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 })
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, openUp: false })
   const ref = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -44,10 +44,18 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
     if (value) setView(parseISO(value))
   }, [value])
 
+  const DROPDOWN_HEIGHT = 290 // approximate calendar height in px
+
   const handleOpen = () => {
     if (btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect()
-      setDropdownPos({ top: rect.bottom + 4, left: rect.left })
+      const spaceBelow = window.innerHeight - rect.bottom
+      const openUp = spaceBelow < DROPDOWN_HEIGHT + 8
+      setDropdownPos({
+        top: openUp ? rect.top - DROPDOWN_HEIGHT - 4 : rect.bottom + 4,
+        left: rect.left,
+        openUp,
+      })
     }
     setOpen(v => !v)
   }

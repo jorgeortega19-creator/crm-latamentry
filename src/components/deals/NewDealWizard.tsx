@@ -106,22 +106,34 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
     if (!newContact.name.trim()) { setContactError('Name is required'); return }
     if (!newContact.email.trim()) { setContactError('Email is required'); return }
     setSavingContact(true)
-    const { data, error } = await supabase.from('contacts').insert({
-      name: newContact.name.trim(),
-      email: newContact.email.trim(),
-      title: newContact.title.trim() || null,
-      phone: newContact.phone.trim() || null,
-      company_name: form.company || null,
-      country: form.country,
-      status: 'Prospect',
-      pkg: form.pkg,
-      value: 0,
-      owner_id: currentUserId,
-      owner_name: currentUserName,
-    }).select().single()
-    setSavingContact(false)
-    if (error) { setContactError(error.message); return }
-    const c = data as Contact
+    let data: Contact | null = null
+    try {
+      const result = await Promise.race([
+        supabase.from('contacts').insert({
+          name: newContact.name.trim(),
+          email: newContact.email.trim(),
+          title: newContact.title.trim() || null,
+          phone: newContact.phone.trim() || null,
+          company_name: form.company || null,
+          country: form.country,
+          status: 'Prospect',
+          pkg: form.pkg,
+          value: 0,
+          owner_id: currentUserId,
+          owner_name: currentUserName,
+        }).select().single(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Request timed out. Please try again.')), 10000)),
+      ])
+      setSavingContact(false)
+      if (result.error) { setContactError(result.error.message); return }
+      data = result.data as Contact
+    } catch (err: unknown) {
+      setSavingContact(false)
+      setContactError(err instanceof Error ? err.message : 'Failed to create contact. Please try again.')
+      return
+    }
+    if (!data) return
+    const c = data
     setContacts(prev => [...prev, c])
     set('contact_id', c.id)
     setShowNewContact(false)

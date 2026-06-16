@@ -42,15 +42,26 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      // getSession reads from local storage — no network call, more reliable
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (user) {
         setCurrentUserId(user.id)
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles').select('name, is_admin').eq('id', user.id).single()
         if (profile) {
           setIsAdmin(profile.is_admin)
           setCurrentUserName(profile.name)
           setForm(f => ({ ...f, owner: profile.name }))
+        } else if (profileError) {
+          // Retry once in case of transient network error
+          const { data: retried } = await supabase
+            .from('profiles').select('name, is_admin').eq('id', user.id).single()
+          if (retried) {
+            setIsAdmin(retried.is_admin)
+            setCurrentUserName(retried.name)
+            setForm(f => ({ ...f, owner: retried.name }))
+          }
         }
       }
     }

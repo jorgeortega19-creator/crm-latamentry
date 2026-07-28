@@ -117,16 +117,26 @@ export default function CompanyNdaSection({ company }: Props) {
   const uploadSigned = async (file: File) => {
     setUploading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      const ext = file.name.split('.').pop()
-      const storagePath = `${company.id}/${Date.now()}_${file.name}`
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+
+      // Sanitize file name and ensure correct MIME type
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const storagePath = `${company.id}/${Date.now()}_${safeName}`
+      const ext = safeName.split('.').pop()?.toLowerCase()
+      const mimeMap: Record<string, string> = {
+        pdf: 'application/pdf',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        doc: 'application/msword',
+      }
+      const contentType = (ext && mimeMap[ext]) || file.type || 'application/octet-stream'
 
       const { error: uploadErr } = await supabase.storage
         .from(BUCKET)
-        .upload(storagePath, file, { contentType: file.type, upsert: false })
-      if (uploadErr) throw uploadErr
+        .upload(storagePath, file, { contentType, upsert: false })
+      if (uploadErr) throw new Error(`Storage error: ${uploadErr.message}`)
 
-      const { data } = await supabase.from('company_ndas').insert({
+      const { data, error: dbErr } = await supabase.from('company_ndas').insert({
         company_id: company.id,
         company_name: company.name,
         type: 'signed',
@@ -134,9 +144,11 @@ export default function CompanyNdaSection({ company }: Props) {
         storage_path: storagePath,
         created_by: user?.id ?? null,
       }).select().single()
+      if (dbErr) throw new Error(`DB error: ${dbErr.message}`)
       if (data) setNdas(prev => [data as CompanyNda, ...prev])
-    } catch {
-      alert('Upload failed. Please try again.')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      alert(`Upload failed: ${msg}`)
     }
     setUploading(false)
   }

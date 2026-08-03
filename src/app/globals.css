@@ -77,6 +77,12 @@ button, [role="button"], a {
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* ── Setu theme ───────────────────────────────────────── */
+[data-theme="setu"] {
+  --gold: #7C3AED;
+  --gold-soft: rgba(124,58,237,0.12);
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }

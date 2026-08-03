@@ -8,9 +8,10 @@ import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
 import type { Profile } from '@/lib/types'
 
-const CLIENT_LOGO   = process.env.NEXT_PUBLIC_CLIENT_LOGO   || ''   // e.g. '/setu-logo.webp'
-const CLIENT_NAME   = process.env.NEXT_PUBLIC_CLIENT_NAME   || 'Latam Entry'
-const CLIENT_LABEL  = process.env.NEXT_PUBLIC_CLIENT_LABEL  || 'Revenue Enablement'
+const CLIENT_LOGO      = process.env.NEXT_PUBLIC_CLIENT_LOGO   || ''
+const CLIENT_NAME      = process.env.NEXT_PUBLIC_CLIENT_NAME   || 'Latam Entry'
+const CLIENT_LABEL     = process.env.NEXT_PUBLIC_CLIENT_LABEL  || 'Revenue Enablement'
+const SHOW_POWERED_BY  = process.env.NEXT_PUBLIC_SHOW_POWERED_BY === 'true'
 
 interface SidebarProps {
   user: Profile | null
@@ -98,6 +99,21 @@ export default function Sidebar({ user, onClose }: SidebarProps) {
       <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {NAV2.map(item => <NavItem key={item.id} item={item} active={isActive(item.path)} onClick={onClose}/>)}
       </nav>
+
+      {/* Powered by Latam Entry */}
+      {SHOW_POWERED_BY && (
+        <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, borderTop: '1px solid var(--hairline)' }}>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600 }}>Powered by</div>
+          <div style={{ background: '#fff', borderRadius: 8, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="18" height="18" viewBox="0 0 36 36" fill="none">
+              <circle cx="18" cy="18" r="18" fill="#1A2B4A"/>
+              <path d="M10 18 L20 10 L30 18" stroke="#F97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M14 18 L14 26 L22 26 L22 18" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#1A2B4A', letterSpacing: '0.01em' }}>Latam Entry</span>
+          </div>
+        </div>
+      )}
 
       {/* User */}
       <div style={{

@@ -4,8 +4,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
 import type { Profile } from '@/lib/types'
+
+const CLIENT_LOGO   = process.env.NEXT_PUBLIC_CLIENT_LOGO   || ''   // e.g. '/setu-logo.webp'
+const CLIENT_NAME   = process.env.NEXT_PUBLIC_CLIENT_NAME   || 'Latam Entry'
+const CLIENT_LABEL  = process.env.NEXT_PUBLIC_CLIENT_LABEL  || 'Revenue Enablement'
 
 interface SidebarProps {
   user: Profile | null
@@ -52,20 +57,24 @@ export default function Sidebar({ user, onClose }: SidebarProps) {
       }}>
         <div style={{
           width: 44, height: 44, borderRadius: 10,
-          background: '#F5F5F5', padding: 4,
+          background: '#FFFFFF', padding: 4,
           display: 'grid', placeItems: 'center',
           flex: '0 0 auto',
           border: '1px solid var(--hairline)',
         }}>
-          <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
-            <circle cx="18" cy="18" r="18" fill="#1A2B4A"/>
-            <path d="M10 18 L20 10 L30 18" stroke="#F97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M14 18 L14 26 L22 26 L22 18" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+          {CLIENT_LOGO ? (
+            <Image src={CLIENT_LOGO} alt={CLIENT_NAME} width={36} height={36} style={{ objectFit: 'contain', width: 36, height: 36 }}/>
+          ) : (
+            <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+              <circle cx="18" cy="18" r="18" fill="#1A2B4A"/>
+              <path d="M10 18 L20 10 L30 18" stroke="#F97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M14 18 L14 26 L22 26 L22 18" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.02em' }}>Latam Entry</div>
-          <div style={{ fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: 3, fontWeight: 600 }}>Revenue Enablement</div>
+          <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.02em' }}>{CLIENT_NAME}</div>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: 3, fontWeight: 600 }}>{CLIENT_LABEL}</div>
         </div>
         {/* Mobile close button */}
         {onClose && (

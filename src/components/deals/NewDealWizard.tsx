@@ -8,6 +8,11 @@ import DatePicker from '@/components/ui/DatePicker'
 import { COUNTRIES, SERVICE_PACKAGES, TEAM, getPkg, getStage, fmtCurrency } from '@/lib/constants'
 import type { Contact, Deal } from '@/lib/types'
 
+const IS_CLIENT_CRM = process.env.NEXT_PUBLIC_CLIENT_THEME === 'setu'
+const OWNER_OPTIONS = IS_CLIENT_CRM
+  ? TEAM.filter(t => t.id === 'jorge' || t.id === 'sreejith')
+  : TEAM
+
 interface Props {
   onClose: () => void
   onCreated: (d: Deal) => void
@@ -232,7 +237,7 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
           <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>New Opty</div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-              Step {step} of 3 — {step === 1 ? 'Basics' : step === 2 ? 'Package & Value' : 'Review'}
+              Step {step} of 3 — {step === 1 ? 'Basics' : step === 2 ? (IS_CLIENT_CRM ? 'Value' : 'Package & Value') : 'Review'}
             </div>
           </div>
           <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: 8, display: 'grid', placeItems: 'center', color: 'var(--text-dim)', border: '1px solid var(--hairline)', background: 'transparent' }}>
@@ -357,27 +362,29 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
 
           {step === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Field label="Service package">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {SERVICE_PACKAGES.map(p => (
-                    <button key={p.id} onClick={() => set('pkg', p.id)} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '12px 14px', borderRadius: 8, border: '1px solid',
-                      borderColor: form.pkg === p.id ? 'var(--gold)' : 'var(--hairline)',
-                      background: form.pkg === p.id ? 'var(--gold-soft)' : 'var(--surface-2)',
-                      cursor: 'pointer',
-                    }}>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: form.pkg === p.id ? 'var(--gold)' : 'var(--text)' }}>{p.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                          Service term: {p.term_label}
+              {!IS_CLIENT_CRM && (
+                <Field label="Service package">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {SERVICE_PACKAGES.map(p => (
+                      <button key={p.id} onClick={() => set('pkg', p.id)} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '12px 14px', borderRadius: 8, border: '1px solid',
+                        borderColor: form.pkg === p.id ? 'var(--gold)' : 'var(--hairline)',
+                        background: form.pkg === p.id ? 'var(--gold-soft)' : 'var(--surface-2)',
+                        cursor: 'pointer',
+                      }}>
+                        <div style={{ textAlign: 'left' }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: form.pkg === p.id ? 'var(--gold)' : 'var(--text)' }}>{p.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                            Service term: {p.term_label}
+                          </div>
                         </div>
-                      </div>
-                      {form.pkg === p.id && <Icon name="check" size={16} color="var(--gold)"/>}
-                    </button>
-                  ))}
-                </div>
-              </Field>
+                        {form.pkg === p.id && <Icon name="check" size={16} color="var(--gold)"/>}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              )}
 
               <Field label="TCV (USD)" required error={errors.tcv}>
                 <input type="number" value={form.tcv} onChange={e => set('tcv', e.target.value)} placeholder="0" style={iStyle(!!errors.tcv)}/>
@@ -399,7 +406,7 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
                 <Field label="Owner">
                   {isAdmin ? (
                     <select value={form.owner} onChange={e => set('owner', e.target.value)} style={{ ...iStyle(false), appearance: 'none' as const }}>
-                      {TEAM.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                      {OWNER_OPTIONS.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                     </select>
                   ) : (
                     <div style={{ padding: '10px 12px', background: 'var(--surface-2)', border: '1px solid var(--hairline)', borderRadius: 8, fontSize: 13, color: 'var(--text-dim)' }}>
@@ -418,8 +425,7 @@ export default function NewDealWizard({ onClose, onCreated }: Props) {
                 ['Deal name', form.name],
                 ['Company', form.company],
                 ['Country', COUNTRIES.find(c => c.code === form.country)?.name],
-                ['Package', pkg?.name],
-                ['Service term', pkg?.term_label],
+                ...(IS_CLIENT_CRM ? [] : [['Package', pkg?.name], ['Service term', pkg?.term_label]]),
                 ['TCV', tcv > 0 ? fmtCurrency(tcv) : '—'],
                 ['Stage', 'Discovery'],
                 ['Owner', form.owner],

@@ -19,6 +19,10 @@ interface UserRow {
 interface Props { profile: Profile | null }
 
 const SUPER_ADMIN_EMAIL = 'jorge@latam-entry.com'
+const IS_CLIENT_CRM = process.env.NEXT_PUBLIC_CLIENT_THEME === 'setu'
+const ROLE_OPTIONS = IS_CLIENT_CRM
+  ? ['Latam Entry Team', 'Setu Team']
+  : ['Account Executive', 'Managing Partner', 'Senior AE', 'Presales', 'Technical Managing Partner']
 
 export default function SettingsClient({ profile }: Props) {
   const router = useRouter()
@@ -31,7 +35,7 @@ export default function SettingsClient({ profile }: Props) {
   const [newEmail, setNewEmail] = useState('')
   const [newName, setNewName] = useState('')
   const [newPassword, setNewPassword] = useState('')
-  const [newRole, setNewRole] = useState('Latam Entry Team')
+  const [newRole, setNewRole] = useState(ROLE_OPTIONS[0])
   const [newIsAdmin, setNewIsAdmin] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -142,8 +146,7 @@ export default function SettingsClient({ profile }: Props) {
                   <div>
                     <div style={lbl}>Role</div>
                     <select value={newRole} onChange={e => setNewRole(e.target.value)} style={{ ...inp, appearance: 'none' as const }}>
-                      <option value="Latam Entry Team">Latam Entry Team</option>
-                      <option value="Setu Team">Setu Team</option>
+                      {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
                   </div>
                 </div>

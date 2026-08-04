@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -15,10 +16,6 @@ export default function LoginPage() {
   async function handleSubmit() {
     if (!email.trim() || !password.trim()) {
       setError('Email and password are required')
-      return
-    }
-    if (!email.toLowerCase().endsWith('@latam-entry.com')) {
-      setError('Only @latam-entry.com accounts are allowed')
       return
     }
     setLoading(true)
@@ -74,14 +71,23 @@ export default function LoginPage() {
 
         <div style={{ marginBottom: 6 }}>
           <div style={labelStyle}>Password</div>
-          <input
-            type="password"
-            value={password}
-            onChange={e => { setPassword(e.target.value); setError(null) }}
-            placeholder="••••••••"
-            style={inputStyle(!!error)}
-            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={e => { setPassword(e.target.value); setError(null) }}
+              placeholder="••••••••"
+              style={{ ...inputStyle(!!error), paddingRight: 40 }}
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(v => !v)}
+              style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, fontSize: 16 }}
+            >
+              {showPassword ? '🙈' : '👁'}
+            </button>
+          </div>
           {error && <div style={{ fontSize: 11, color: 'var(--negative)', marginTop: 6 }}>{error}</div>}
         </div>
 

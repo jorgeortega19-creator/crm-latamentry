@@ -31,16 +31,14 @@ export async function POST(req: NextRequest) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { email, name, password, is_admin } = await req.json()
+  const { email, name, password, role: roleInput, is_admin } = await req.json()
 
   if (!email || !name || !password) {
     return NextResponse.json({ error: 'email, name and password are required' }, { status: 400 })
   }
-  if (!email.endsWith(ALLOWED_DOMAIN)) {
-    return NextResponse.json({ error: `Email must be @latam-entry.com` }, { status: 400 })
-  }
 
-  const role = is_admin ? 'Managing Partner' : 'Account Executive'
+  const ALLOWED_ROLES = ['Latam Entry Team', 'Setu Team']
+  const role = ALLOWED_ROLES.includes(roleInput) ? roleInput : 'Latam Entry Team'
 
   const adminClient = createAdminClient()
   const { data, error } = await adminClient.auth.admin.createUser({

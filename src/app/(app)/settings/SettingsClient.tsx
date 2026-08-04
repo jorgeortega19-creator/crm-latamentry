@@ -31,6 +31,7 @@ export default function SettingsClient({ profile }: Props) {
   const [newEmail, setNewEmail] = useState('')
   const [newName, setNewName] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [newRole, setNewRole] = useState('Latam Entry Team')
   const [newIsAdmin, setNewIsAdmin] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -80,13 +81,13 @@ export default function SettingsClient({ profile }: Props) {
     const res = await fetch('/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: newEmail, name: newName, password: newPassword, is_admin: newIsAdmin }),
+      body: JSON.stringify({ email: newEmail, name: newName, password: newPassword, role: newRole, is_admin: newIsAdmin }),
     })
     const data = await res.json()
     if (!res.ok) {
       setCreateError(data.error || 'Failed to create user')
     } else {
-      setNewEmail(''); setNewName(''); setNewPassword(''); setNewIsAdmin(false)
+      setNewEmail(''); setNewName(''); setNewPassword(''); setNewRole('Latam Entry Team'); setNewIsAdmin(false)
       await loadUsers()
     }
     setCreating(false)
@@ -140,17 +141,15 @@ export default function SettingsClient({ profile }: Props) {
                   </div>
                   <div>
                     <div style={lbl}>Role</div>
-                    <button onClick={() => setNewIsAdmin(v => !v)} style={{
-                      width: '100%', padding: '8px 10px', borderRadius: 7, fontSize: 12, fontWeight: 600,
-                      border: `1px solid ${newIsAdmin ? 'rgba(250,197,28,0.5)' : 'var(--hairline)'}`,
-                      background: newIsAdmin ? 'var(--gold-soft)' : 'var(--surface-2)',
-                      color: newIsAdmin ? 'var(--gold)' : 'var(--text-dim)',
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                    }}>
-                      <Icon name={newIsAdmin ? 'shield' : 'user'} size={12} color={newIsAdmin ? 'var(--gold)' : 'var(--text-dim)'}/>
-                      {newIsAdmin ? 'Managing Partner' : 'Account Executive'}
-                    </button>
+                    <select value={newRole} onChange={e => setNewRole(e.target.value)} style={{ ...inp, appearance: 'none' as const }}>
+                      <option value="Latam Entry Team">Latam Entry Team</option>
+                      <option value="Setu Team">Setu Team</option>
+                    </select>
                   </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input type="checkbox" id="newIsAdmin" checked={newIsAdmin} onChange={e => setNewIsAdmin(e.target.checked)} style={{ width: 14, height: 14, cursor: 'pointer' }}/>
+                  <label htmlFor="newIsAdmin" style={{ fontSize: 12, color: 'var(--text-dim)', cursor: 'pointer' }}>Admin (can create/delete users)</label>
                 </div>
                 {createError && <div style={{ fontSize: 11, color: 'var(--negative)' }}>{createError}</div>}
                 <div>

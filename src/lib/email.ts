@@ -1,5 +1,8 @@
 const ADMIN_EMAIL = 'jorge@latam-entry.com'
-export const ADDITIONAL_RECIPIENTS = ['raczel159@gmail.com', 'sreejith@latam-entry.com']
+// Can be overridden per deployment via ADDITIONAL_EMAIL_RECIPIENTS (comma-separated)
+export const ADDITIONAL_RECIPIENTS: string[] = process.env.ADDITIONAL_EMAIL_RECIPIENTS
+  ? process.env.ADDITIONAL_EMAIL_RECIPIENTS.split(',').map(e => e.trim()).filter(Boolean)
+  : ['raczel159@gmail.com', 'sreejith@latam-entry.com']
 const FROM = 'Latam Entry CRM <noreply@latam-entry.com>'
 const CRM_URL = 'https://crm.latam-entry.com'
 

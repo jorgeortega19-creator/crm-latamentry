@@ -37,6 +37,7 @@ export default function SettingsClient({ profile }: Props) {
   const [newPassword, setNewPassword] = useState('')
   const [newRole, setNewRole] = useState(ROLE_OPTIONS[0])
   const [newIsAdmin, setNewIsAdmin] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -44,6 +45,8 @@ export default function SettingsClient({ profile }: Props) {
   // Password change
   const [newPwd, setNewPwd] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
+  const [showNewPwd, setShowNewPwd] = useState(false)
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false)
   const [pwdError, setPwdError] = useState<string | null>(null)
   const [pwdSaved, setPwdSaved] = useState(false)
   const [pwdSaving, setPwdSaving] = useState(false)
@@ -141,7 +144,10 @@ export default function SettingsClient({ profile }: Props) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <div>
                     <div style={lbl}>Temporary password</div>
-                    <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min. 6 chars" style={inp}/>
+                    <div style={{ position: 'relative' }}>
+                      <input type={showNewPassword ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min. 6 chars" style={{ ...inp, paddingRight: 32 }}/>
+                      <button type="button" onClick={() => setShowNewPassword(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14, padding: 2 }}>{showNewPassword ? '🙈' : '👁'}</button>
+                    </div>
                   </div>
                   <div>
                     <div style={lbl}>Role</div>
@@ -214,11 +220,17 @@ export default function SettingsClient({ profile }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
               <div style={lbl}>New password</div>
-              <input type="password" value={newPwd} onChange={e => { setNewPwd(e.target.value); setPwdError(null) }} placeholder="Min. 6 characters" style={inp}/>
+              <div style={{ position: 'relative' }}>
+                <input type={showNewPwd ? 'text' : 'password'} value={newPwd} onChange={e => { setNewPwd(e.target.value); setPwdError(null) }} placeholder="Min. 6 characters" style={{ ...inp, paddingRight: 32 }}/>
+                <button type="button" onClick={() => setShowNewPwd(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14, padding: 2 }}>{showNewPwd ? '🙈' : '👁'}</button>
+              </div>
             </div>
             <div>
               <div style={lbl}>Confirm password</div>
-              <input type="password" value={confirmPwd} onChange={e => { setConfirmPwd(e.target.value); setPwdError(null) }} placeholder="Repeat password" style={inp}/>
+              <div style={{ position: 'relative' }}>
+                <input type={showConfirmPwd ? 'text' : 'password'} value={confirmPwd} onChange={e => { setConfirmPwd(e.target.value); setPwdError(null) }} placeholder="Repeat password" style={{ ...inp, paddingRight: 32 }}/>
+                <button type="button" onClick={() => setShowConfirmPwd(v => !v)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14, padding: 2 }}>{showConfirmPwd ? '🙈' : '👁'}</button>
+              </div>
             </div>
           </div>
           {pwdError && <div style={{ fontSize: 11, color: 'var(--negative)', marginTop: 6 }}>{pwdError}</div>}

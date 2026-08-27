@@ -6,12 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
+import { CLIENT_LOGO, CLIENT_NAME, CLIENT_LABEL, SHOW_POWERED_BY } from '@/lib/branding'
 import type { Profile } from '@/lib/types'
-
-const CLIENT_LOGO      = process.env.NEXT_PUBLIC_CLIENT_LOGO   || ''
-const CLIENT_NAME      = process.env.NEXT_PUBLIC_CLIENT_NAME   || 'Latam Entry'
-const CLIENT_LABEL     = process.env.NEXT_PUBLIC_CLIENT_LABEL  || 'Revenue Enablement'
-const SHOW_POWERED_BY  = process.env.NEXT_PUBLIC_SHOW_POWERED_BY === 'true'
 
 interface SidebarProps {
   user: Profile | null

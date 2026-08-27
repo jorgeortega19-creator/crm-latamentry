@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail, welcomeEmailHtml } from '@/lib/email'
+import { ROLE_OPTIONS, LATAM_TEAM_ROLE } from '@/lib/branding'
 
 const ALLOWED_DOMAIN = '@latam-entry.com'
 const SUPER_ADMIN_EMAIL = 'jorge@latam-entry.com'
@@ -37,8 +38,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'email, name and password are required' }, { status: 400 })
   }
 
-  const ALLOWED_ROLES = ['Latam Entry Team', 'Setu Team']
-  const role = ALLOWED_ROLES.includes(roleInput) ? roleInput : 'Latam Entry Team'
+  const role = ROLE_OPTIONS.includes(roleInput) ? roleInput : LATAM_TEAM_ROLE
 
   const adminClient = createAdminClient()
   const { data, error } = await adminClient.auth.admin.createUser({

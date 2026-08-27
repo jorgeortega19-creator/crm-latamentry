@@ -1,17 +1,15 @@
 import type { Metadata } from 'next'
 import './globals.css'
-
-const clientName = process.env.NEXT_PUBLIC_CLIENT_NAME || 'Latam Entry'
-const clientTheme = process.env.NEXT_PUBLIC_CLIENT_THEME || ''
+import { CLIENT_NAME, CLIENT_THEME } from '@/lib/branding'
 
 export const metadata: Metadata = {
-  title: `${clientName} CRM`,
+  title: `${CLIENT_NAME} CRM`,
   description: 'Revenue Enablement Platform',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full" data-theme={clientTheme || undefined}>
+    <html lang="en" className="h-full" data-theme={CLIENT_THEME || undefined}>
       <body className="h-full">{children}</body>
     </html>
   )

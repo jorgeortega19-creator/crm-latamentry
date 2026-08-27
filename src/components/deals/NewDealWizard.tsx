@@ -5,13 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import Icon from '@/components/ui/Icon'
 import CountrySelect from '@/components/ui/CountrySelect'
 import DatePicker from '@/components/ui/DatePicker'
-import { COUNTRIES, SERVICE_PACKAGES, TEAM, getPkg, getStage, fmtCurrency } from '@/lib/constants'
+import { COUNTRIES, SERVICE_PACKAGES, getPkg, getStage, fmtCurrency } from '@/lib/constants'
+import { IS_CLIENT_CRM, OWNER_OPTIONS } from '@/lib/branding'
 import type { Contact, Deal } from '@/lib/types'
-
-const IS_CLIENT_CRM = process.env.NEXT_PUBLIC_CLIENT_THEME === 'setu'
-const OWNER_OPTIONS = IS_CLIENT_CRM
-  ? TEAM.filter(t => t.id === 'jorge' || t.id === 'sreejith')
-  : TEAM
 
 interface Props {
   onClose: () => void

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Topbar from '@/components/shell/Topbar'
 import Icon from '@/components/ui/Icon'
+import { ROLE_OPTIONS } from '@/lib/branding'
 import type { Profile } from '@/lib/types'
 
 interface UserRow {
@@ -19,10 +20,6 @@ interface UserRow {
 interface Props { profile: Profile | null }
 
 const SUPER_ADMIN_EMAIL = 'jorge@latam-entry.com'
-const IS_CLIENT_CRM = process.env.NEXT_PUBLIC_CLIENT_THEME === 'setu'
-const ROLE_OPTIONS = IS_CLIENT_CRM
-  ? ['Latam Entry Team', 'Setu Team']
-  : ['Account Executive', 'Managing Partner', 'Senior AE', 'Presales', 'Technical Managing Partner']
 
 export default function SettingsClient({ profile }: Props) {
   const router = useRouter()
@@ -94,7 +91,7 @@ export default function SettingsClient({ profile }: Props) {
     if (!res.ok) {
       setCreateError(data.error || 'Failed to create user')
     } else {
-      setNewEmail(''); setNewName(''); setNewPassword(''); setNewRole('Latam Entry Team'); setNewIsAdmin(false)
+      setNewEmail(''); setNewName(''); setNewPassword(''); setNewRole(ROLE_OPTIONS[0]); setNewIsAdmin(false)
       await loadUsers()
     }
     setCreating(false)

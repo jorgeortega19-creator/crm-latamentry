@@ -43,5 +43,10 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|assets).*)'],
+  // Image files are excluded so assets in public/ (client logos, icons) load on
+  // the login page, which is rendered before a session exists. Without this the
+  // auth guard redirects them to /login and the browser shows a broken image.
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|assets|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+  ],
 }

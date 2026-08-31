@@ -60,7 +60,17 @@ export default function Sidebar({ user, onClose }: SidebarProps) {
           border: '1px solid var(--hairline)',
         }}>
           {CLIENT_LOGO ? (
-            <Image src={CLIENT_LOGO} alt={CLIENT_NAME} width={36} height={36} style={{ objectFit: 'contain', width: 36, height: 36 }}/>
+            <Image
+              src={CLIENT_LOGO}
+              alt={CLIENT_NAME}
+              width={36}
+              height={36}
+              /* Next's image optimizer 415s on SVG, and client logos may be
+                 SVG (Measure) or raster (Setu). A 36px logo gains nothing
+                 from optimization, so serve it as-is either way. */
+              unoptimized
+              style={{ objectFit: 'contain', width: 36, height: 36 }}
+            />
           ) : (
             <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
               <circle cx="18" cy="18" r="18" fill="#1A2B4A"/>

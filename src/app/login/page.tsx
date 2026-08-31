@@ -50,6 +50,10 @@ export default function LoginPage() {
                 alt={CLIENT_NAME}
                 width={36}
                 height={36}
+                /* Next's image optimizer rejects SVG with a 415, and client
+                   logos may be SVG (Measure) or raster (Setu). Nothing to gain
+                   from optimizing a 36px logo, so serve it as-is either way. */
+                unoptimized
                 style={{ objectFit: 'contain', width: 36, height: 36 }}
               />
             ) : (

@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { CLIENT_LOGO, CLIENT_NAME, CLIENT_LABEL } from '@/lib/branding'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -42,11 +44,21 @@ export default function LoginPage() {
       }} className="animate-modal-in">
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
           <div style={{ width: 56, height: 56, borderRadius: 12, background: '#F5F5F5', padding: 6, display: 'grid', placeItems: 'center' }}>
-            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-              <circle cx="18" cy="18" r="18" fill="#1A2B4A"/>
-              <path d="M10 18 L20 10 L30 18" stroke="#F97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M14 18 L14 26 L22 26 L22 18" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            {CLIENT_LOGO ? (
+              <Image
+                src={CLIENT_LOGO}
+                alt={CLIENT_NAME}
+                width={36}
+                height={36}
+                style={{ objectFit: 'contain', width: 36, height: 36 }}
+              />
+            ) : (
+              <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                <circle cx="18" cy="18" r="18" fill="#1A2B4A"/>
+                <path d="M10 18 L20 10 L30 18" stroke="#F97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M14 18 L14 26 L22 26 L22 18" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
           </div>
         </div>
 
@@ -54,7 +66,7 @@ export default function LoginPage() {
           Welcome back
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 24 }}>
-          Sign in to the Latam Entry CRM
+          Sign in to the {CLIENT_NAME} CRM
         </div>
 
         <div style={{ marginBottom: 14 }}>
@@ -63,7 +75,7 @@ export default function LoginPage() {
             type="email"
             value={email}
             onChange={e => { setEmail(e.target.value); setError(null) }}
-            placeholder="you@latam-entry.com"
+            placeholder="you@company.com"
             style={inputStyle(!!error)}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           />
@@ -97,7 +109,7 @@ export default function LoginPage() {
           style={{
             width: '100%', padding: '11px 18px', marginTop: 16,
             fontSize: 13, fontWeight: 600, borderRadius: 8,
-            background: loading ? 'rgba(250,197,28,0.6)' : 'var(--gold)',
+            background: 'var(--gold)', opacity: loading ? 0.6 : 1,
             color: '#080808', border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
           }}
         >
@@ -105,7 +117,7 @@ export default function LoginPage() {
         </button>
 
         <div style={{ textAlign: 'center', fontSize: 10, color: 'var(--text-muted)', marginTop: 28, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-          Latam Entry · Revenue Enablement
+          {CLIENT_NAME} · {CLIENT_LABEL}
         </div>
       </div>
     </div>

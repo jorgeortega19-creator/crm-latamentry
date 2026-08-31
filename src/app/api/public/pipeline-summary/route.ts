@@ -1,16 +1,12 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireInternalKey } from '@/lib/api-auth'
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-}
+// Server-to-server only (ERP → CRM). No CORS headers: browsers must not call this.
+export async function GET(req: NextRequest) {
+  const unauthorized = requireInternalKey(req)
+  if (unauthorized) return unauthorized
 
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS })
-}
-
-export async function GET() {
   const supabase = createAdminClient()
 
   const { data, error } = await supabase
@@ -18,10 +14,10 @@ export async function GET() {
     .select('tcv')
     .not('stage', 'in', '("closed_won","closed_lost")')
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: CORS })
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const openDeals = data?.length ?? 0
   const totalTcv  = data?.reduce((sum, d) => sum + (Number(d.tcv) || 0), 0) ?? 0
 
-  return NextResponse.json({ openDeals, totalTcv, currency: 'USD' }, { headers: CORS })
+  return NextResponse.json({ openDeals, totalTcv, currency: 'USD' })
 }

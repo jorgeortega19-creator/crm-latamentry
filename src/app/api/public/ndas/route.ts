@@ -1,16 +1,12 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireInternalKey } from '@/lib/api-auth'
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-}
+// Server-to-server only (ERP → CRM). No CORS headers: browsers must not call this.
+export async function GET(req: NextRequest) {
+  const unauthorized = requireInternalKey(req)
+  if (unauthorized) return unauthorized
 
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS })
-}
-
-export async function GET() {
   const supabase = createAdminClient()
 
   // Get companies that have at least one closed_won deal
@@ -20,7 +16,7 @@ export async function GET() {
     .eq('stage', 'closed_won')
 
   if (!wonDeals || wonDeals.length === 0) {
-    return NextResponse.json([], { headers: CORS })
+    return NextResponse.json([])
   }
 
   const wonCompanies = [...new Set(wonDeals.map(d => d.company_name))]
@@ -32,7 +28,7 @@ export async function GET() {
     .eq('type', 'signed')
     .in('company_name', wonCompanies)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: CORS })
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const result = (ndas ?? []).map(n => {
     const { data: urlData } = supabase.storage
@@ -49,5 +45,5 @@ export async function GET() {
     }
   })
 
-  return NextResponse.json(result, { headers: CORS })
+  return NextResponse.json(result)
 }

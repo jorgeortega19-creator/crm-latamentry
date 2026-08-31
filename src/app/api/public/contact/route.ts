@@ -6,25 +6,24 @@ import {
   webInquiryNotificationHtml,
   webInquiryAutoReplyHtml,
 } from '@/lib/email'
+import { requireInternalKey } from '@/lib/api-auth'
+import { rateLimit } from '@/lib/rate-limit'
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-}
-
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
-}
-
+// Server-to-server only. No CORS headers: browsers must not call this.
 export async function POST(req: NextRequest) {
+  const unauthorized = requireInternalKey(req)
+  if (unauthorized) return unauthorized
+
+  // This route inserts rows and sends email, so cap it even for authorised callers.
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+  if (!rateLimit(`contact:${ip}`, 10, 60_000)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+  }
+
   const { name, email, company, interest, message } = await req.json()
 
   if (!name?.trim() || !email?.trim() || !company?.trim()) {
-    return NextResponse.json(
-      { error: 'Missing required fields' },
-      { status: 400, headers: CORS_HEADERS }
-    )
+    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
   const admin = createAdminClient()
@@ -74,5 +73,5 @@ export async function POST(req: NextRequest) {
     html: webInquiryAutoReplyHtml(name.trim()),
   })
 
-  return NextResponse.json({ ok: true }, { headers: CORS_HEADERS })
+  return NextResponse.json({ ok: true })
 }
